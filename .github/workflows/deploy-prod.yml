@@ -27,7 +27,7 @@ jobs:
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
       - name: Download packages
-        run: ./scripts/download-packages.sh prod
+        run: ./scripts/download-packages.sh production
 
       - name: Set package versions for summary
         run: |
@@ -68,7 +68,7 @@ jobs:
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
       - name: Download packages
-        run: ./scripts/download-packages.sh prod
+        run: ./scripts/download-packages.sh production
 
       - name: Set package versions for summary
         run: |

@@ -173,6 +173,49 @@ resource "aws_s3_bucket_lifecycle_configuration" "activities" {
   }
 }
 
+# S3 bucket for CloudFront logs (conditional)
+resource "aws_s3_bucket" "logs" {
+  count  = var.enable_logging ? 1 : 0
+  bucket = "${var.domain_name}-logs"
+  tags   = var.tags
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "logs" {
+  count  = var.enable_logging ? 1 : 0
+  bucket = aws_s3_bucket.logs[0].id
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
+
+resource "aws_s3_bucket_acl" "logs" {
+  count  = var.enable_logging ? 1 : 0
+  bucket = aws_s3_bucket.logs[0].id
+  acl    = "log-delivery-write"
+  
+  depends_on = [aws_s3_bucket_ownership_controls.logs]
+}
+
+resource "aws_s3_bucket_ownership_controls" "logs" {
+  count  = var.enable_logging ? 1 : 0
+  bucket = aws_s3_bucket.logs[0].id
+
+  rule {
+    object_ownership = "BucketOwnerPreferred"
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "logs" {
+  count                   = var.enable_logging ? 1 : 0
+  bucket                  = aws_s3_bucket.logs[0].id
+  block_public_acls       = false
+  block_public_policy     = true
+  ignore_public_acls      = false
+  restrict_public_buckets = true
+}
+
 # CloudFront Origin Access Control
 resource "aws_cloudfront_origin_access_control" "website" {
   name                              = "${var.domain_name}-website-oac"
@@ -276,7 +319,7 @@ resource "aws_cloudfront_distribution" "main" {
     for_each = var.enable_logging ? [1] : []
     content {
       include_cookies = false
-      bucket          = "${var.domain_name}-logs.s3.amazonaws.com"
+      bucket          = aws_s3_bucket.logs[0].bucket_domain_name
       prefix          = "cloudfront/"
     }
   }

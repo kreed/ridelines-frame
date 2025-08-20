@@ -3,26 +3,26 @@
 
 production:
   hub:
-    image: ghcr.io/ridelines/hub
+    image: ghcr.io/kreed/ridelines-hub
     version: "sha-placeholder"  # Will be updated once packages are published
     
   drivetrain:
     lambda:
-      image: ghcr.io/ridelines/drivetrain-lambda
+      image: ghcr.io/kreed/ridelines-drivetrain
       version: "sha-placeholder"  # Will be updated once packages are published
     tippecanoe_layer:
-      image: ghcr.io/ridelines/drivetrain-tippecanoe-layer
+      image: ghcr.io/kreed/ridelines-tippecanoe-layer
       version: "sha-placeholder"  # Will be updated once packages are published
 
 development:
   hub:
-    image: ghcr.io/ridelines/hub
+    image: ghcr.io/kreed/ridelines-hub
     version: "latest"
     
   drivetrain:
     lambda:
-      image: ghcr.io/ridelines/drivetrain-lambda
+      image: ghcr.io/kreed/ridelines-drivetrain
       version: "latest"
     tippecanoe_layer:
-      image: ghcr.io/ridelines/drivetrain-tippecanoe-layer
+      image: ghcr.io/kreed/ridelines-tippecanoe-layer
       version: "latest"
