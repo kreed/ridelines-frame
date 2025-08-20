@@ -11,12 +11,13 @@ variable "environment" {
 variable "lambda_package_path" {
   description = "Path to the Lambda deployment package"
   type        = string
+  default     = "../../artifacts/lambda/lambda-package.zip"
 }
 
-variable "tippecanoe_layer_arn" {
-  description = "ARN of the tippecanoe Lambda layer"
+variable "tippecanoe_layer_package_path" {
+  description = "Path to the tippecanoe Lambda layer package"
   type        = string
-  default     = ""
+  default     = "../../artifacts/layer/layer-package.zip"
 }
 
 variable "athlete_state_bucket_name" {

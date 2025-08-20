@@ -2,6 +2,10 @@
 provider "aws" {
   alias  = "us_east_1"
   region = "us-east-1"
+  
+  default_tags {
+    tags = var.tags
+  }
 }
 
 # Locals for resource naming
@@ -13,9 +17,9 @@ locals {
 # ACM Certificate for CloudFront (must be in us-east-1)
 resource "aws_acm_certificate" "main" {
   provider                  = aws.us_east_1
-  domain_name              = var.domain_name
+  domain_name               = var.domain_name
   subject_alternative_names = ["*.${var.domain_name}"]
-  validation_method        = "DNS"
+  validation_method         = "DNS"
 
   lifecycle {
     create_before_destroy = true
@@ -272,8 +276,8 @@ resource "aws_cloudfront_distribution" "main" {
     for_each = var.enable_logging ? [1] : []
     content {
       include_cookies = false
-      bucket         = "${var.domain_name}-logs.s3.amazonaws.com"
-      prefix         = "cloudfront/"
+      bucket          = "${var.domain_name}-logs.s3.amazonaws.com"
+      prefix          = "cloudfront/"
     }
   }
 

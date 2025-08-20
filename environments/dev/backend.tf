@@ -2,12 +2,9 @@
 
 terraform {
   backend "s3" {
-    bucket = "ridelines-terraform-state"
-    key    = "ridelines-frame/dev/terraform.tfstate"
-    region = "us-west-2"
-    
-    # DynamoDB table for state locking
-    dynamodb_table = "ridelines-terraform-locks"
-    encrypt        = true
+    bucket       = "tofu-052941644876"
+    key          = "ridelines-frame/terraform.tfstate"
+    region       = "us-west-2"
+    use_lockfile = true
   }
 }

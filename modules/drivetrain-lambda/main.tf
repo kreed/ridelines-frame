@@ -128,6 +128,14 @@ resource "aws_iam_role_policy" "lambda_cloudfront" {
   })
 }
 
+# Tippecanoe Lambda layer
+resource "aws_lambda_layer_version" "tippecanoe" {
+  filename            = var.tippecanoe_layer_package_path
+  layer_name          = "${var.project_name}-${var.environment}-tippecanoe"
+  compatible_runtimes = ["provided.al2023"]
+  source_code_hash    = filebase64sha256(var.tippecanoe_layer_package_path)
+}
+
 # Lambda function
 resource "aws_lambda_function" "ridelines_drivetrain" {
   filename         = var.lambda_package_path
@@ -139,7 +147,7 @@ resource "aws_lambda_function" "ridelines_drivetrain" {
   memory_size      = 2048
   source_code_hash = filebase64sha256(var.lambda_package_path)
 
-  layers = var.tippecanoe_layer_arn != "" ? [var.tippecanoe_layer_arn] : []
+  layers = [aws_lambda_layer_version.tippecanoe.arn]
 
   environment {
     variables = {

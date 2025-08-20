@@ -21,13 +21,21 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5
 
-      - name: Install yq for YAML processing
-        run: |
-          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
-          sudo chmod +x /usr/local/bin/yq
+      - name: Login to GitHub Container Registry
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-      - name: Fetch latest packages for development
-        run: ./scripts/fetch-packages.sh dev
+      - name: Download packages
+        run: ./scripts/download-packages.sh dev
+
+      - name: Set package versions for summary
+        run: |
+          HUB_VERSION=$(yq eval '.development.hub.version' versions.yml)
+          LAMBDA_VERSION=$(yq eval '.development.drivetrain.lambda.version' versions.yml)
+          LAYER_VERSION=$(yq eval '.development.drivetrain.tippecanoe_layer.version' versions.yml)
+          
+          echo "HUB_VERSION=${HUB_VERSION}" >> $GITHUB_ENV
+          echo "LAMBDA_VERSION=${LAMBDA_VERSION}" >> $GITHUB_ENV
+          echo "LAYER_VERSION=${LAYER_VERSION}" >> $GITHUB_ENV
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -57,8 +65,8 @@ jobs:
           echo "## Development Deployment Summary" >> $GITHUB_STEP_SUMMARY
           echo "✅ Infrastructure deployed successfully" >> $GITHUB_STEP_SUMMARY
           echo "📦 Packages deployed:" >> $GITHUB_STEP_SUMMARY
-          echo "- Hub: $(yq eval '.development.hub.version' versions.yml)" >> $GITHUB_STEP_SUMMARY
-          echo "- Drivetrain Lambda: $(yq eval '.development.drivetrain.lambda.version' versions.yml)" >> $GITHUB_STEP_SUMMARY
-          echo "- Tippecanoe Layer: $(yq eval '.development.drivetrain.tippecanoe_layer.version' versions.yml)" >> $GITHUB_STEP_SUMMARY
+          echo "- Hub: ${HUB_VERSION}" >> $GITHUB_STEP_SUMMARY
+          echo "- Drivetrain Lambda: ${LAMBDA_VERSION}" >> $GITHUB_STEP_SUMMARY
+          echo "- Tippecanoe Layer: ${LAYER_VERSION}" >> $GITHUB_STEP_SUMMARY
           echo "🌐 Environment: Development" >> $GITHUB_STEP_SUMMARY
           echo "🚀 Deployed from commit: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY

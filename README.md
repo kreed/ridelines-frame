@@ -43,10 +43,7 @@ Package versions are tracked in `versions.yml` with automatic updates via GitHub
 
 ### Commands
 ```bash
-# Fetch packages for environment
-./scripts/fetch-packages.sh dev
-
-# Deploy to development
+# Deploy to development (packages auto-downloaded via GitHub Actions)
 cd environments/dev && tofu plan && tofu apply
 
 # Deploy to production (after PR approval)
