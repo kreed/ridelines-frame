@@ -46,7 +46,7 @@ jobs:
           role-session-name: ${{ github.run_id }}
 
       - name: Plan infrastructure changes
-        uses: dflook/terraform-plan@v1
+        uses: dflook/terraform-plan@v2
         with:
           path: environments/dev
           workspace: dev
