@@ -88,7 +88,7 @@ jobs:
           role-session-name: ${{ github.run_id }}
 
       - name: Apply production infrastructure changes
-        uses: dflook/terraform-apply@v1
+        uses: dflook/terraform-apply@v2
         with:
           path: environments/prod
           workspace: prod
