@@ -54,7 +54,7 @@ jobs:
             environments/dev/terraform.tfvars
 
       - name: Apply infrastructure changes
-        uses: dflook/terraform-apply@v1
+        uses: dflook/terraform-apply@v2
         with:
           path: environments/dev
           workspace: dev
