@@ -1,0 +1,64 @@
+name: Deploy to Development
+
+on:
+  push:
+    branches: [main]
+    paths: ['versions.yml', 'environments/dev/**', 'modules/**']
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+jobs:
+  deploy-dev:
+    name: Deploy to Development Environment
+    runs-on: ubuntu-latest
+    environment: development
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Install yq for YAML processing
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Fetch latest packages for development
+        run: ./scripts/fetch-packages.sh dev
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          role-session-name: ${{ github.run_id }}
+
+      - name: Plan infrastructure changes
+        uses: dflook/terraform-plan@v1
+        with:
+          path: environments/dev
+          workspace: dev
+          var_file: |
+            environments/dev/terraform.tfvars
+
+      - name: Apply infrastructure changes
+        uses: dflook/terraform-apply@v1
+        with:
+          path: environments/dev
+          workspace: dev
+          var_file: |
+            environments/dev/terraform.tfvars
+
+      - name: Deployment summary
+        run: |
+          echo "## Development Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Infrastructure deployed successfully" >> $GITHUB_STEP_SUMMARY
+          echo "📦 Packages deployed:" >> $GITHUB_STEP_SUMMARY
+          echo "- Hub: $(yq eval '.development.hub.version' versions.yml)" >> $GITHUB_STEP_SUMMARY
+          echo "- Drivetrain Lambda: $(yq eval '.development.drivetrain.lambda.version' versions.yml)" >> $GITHUB_STEP_SUMMARY
+          echo "- Tippecanoe Layer: $(yq eval '.development.drivetrain.tippecanoe_layer.version' versions.yml)" >> $GITHUB_STEP_SUMMARY
+          echo "🌐 Environment: Development" >> $GITHUB_STEP_SUMMARY
+          echo "🚀 Deployed from commit: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY

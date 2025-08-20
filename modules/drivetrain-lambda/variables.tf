@@ -1,0 +1,62 @@
+variable "project_name" {
+  description = "Name of the project"
+  type        = string
+}
+
+variable "environment" {
+  description = "Environment name (dev, prod)"
+  type        = string
+}
+
+variable "lambda_package_path" {
+  description = "Path to the Lambda deployment package"
+  type        = string
+}
+
+variable "tippecanoe_layer_arn" {
+  description = "ARN of the tippecanoe Lambda layer"
+  type        = string
+  default     = ""
+}
+
+variable "athlete_state_bucket_name" {
+  description = "Name of the S3 bucket for athlete state (GeoJSON)"
+  type        = string
+}
+
+variable "athlete_state_bucket_arn" {
+  description = "ARN of the S3 bucket for athlete state (GeoJSON)"
+  type        = string
+}
+
+variable "activities_bucket_name" {
+  description = "Name of the S3 bucket for activities data"
+  type        = string
+}
+
+variable "activities_bucket_arn" {
+  description = "ARN of the S3 bucket for activities data"
+  type        = string
+}
+
+variable "cloudfront_distribution_id" {
+  description = "CloudFront distribution ID"
+  type        = string
+}
+
+variable "cloudfront_distribution_arn" {
+  description = "CloudFront distribution ARN"
+  type        = string
+}
+
+variable "enable_function_url" {
+  description = "Enable Lambda function URL"
+  type        = bool
+  default     = false
+}
+
+variable "tags" {
+  description = "Tags to apply to all resources"
+  type        = map(string)
+  default     = {}
+}

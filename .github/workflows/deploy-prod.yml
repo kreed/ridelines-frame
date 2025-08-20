@@ -1,0 +1,91 @@
+name: Deploy to Production
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    paths: ['versions.yml']
+  push:
+    branches: [main]
+    paths: ['versions.yml']
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+jobs:
+  plan-prod:
+    name: Plan Production Deployment
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Install yq for YAML processing
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Fetch specified package versions for production
+        run: ./scripts/fetch-packages.sh prod
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          role-session-name: ${{ github.run_id }}
+
+      - name: Plan production infrastructure changes
+        uses: dflook/terraform-plan@v1
+        with:
+          path: environments/prod
+          workspace: prod
+          var_file: |
+            environments/prod/terraform.tfvars
+
+  apply-prod:
+    name: Apply Production Deployment
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production  # Requires manual approval
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Install yq for YAML processing
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Fetch specified package versions for production
+        run: ./scripts/fetch-packages.sh prod
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          role-session-name: ${{ github.run_id }}
+
+      - name: Apply production infrastructure changes
+        uses: dflook/terraform-apply@v1
+        with:
+          path: environments/prod
+          workspace: prod
+          var_file: |
+            environments/prod/terraform.tfvars
+
+      - name: Production deployment summary
+        run: |
+          echo "## Production Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Infrastructure deployed successfully to production" >> $GITHUB_STEP_SUMMARY
+          echo "📦 Packages deployed:" >> $GITHUB_STEP_SUMMARY
+          echo "- Hub: $(yq eval '.production.hub.version' versions.yml)" >> $GITHUB_STEP_SUMMARY
+          echo "- Drivetrain Lambda: $(yq eval '.production.drivetrain.lambda.version' versions.yml)" >> $GITHUB_STEP_SUMMARY
+          echo "- Tippecanoe Layer: $(yq eval '.production.drivetrain.tippecanoe_layer.version' versions.yml)" >> $GITHUB_STEP_SUMMARY
+          echo "🌐 Environment: Production" >> $GITHUB_STEP_SUMMARY
+          echo "🚀 Deployed from commit: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
