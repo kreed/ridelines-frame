@@ -94,7 +94,7 @@ jobs:
           cat versions.yml
 
       - name: Create consolidated PR
-        uses: peter-evans/create-pull-request@v5
+        uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           title: "chore: update package versions"
