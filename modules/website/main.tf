@@ -216,6 +216,15 @@ resource "aws_s3_bucket_public_access_block" "logs" {
   restrict_public_buckets = true
 }
 
+# Data sources for CloudFront managed policies
+data "aws_cloudfront_cache_policy" "caching_optimized" {
+  name = "Managed-CachingOptimized"
+}
+
+data "aws_cloudfront_response_headers_policy" "security_headers" {
+  name = "Managed-SecurityHeadersPolicy"
+}
+
 # CloudFront Origin Access Control
 resource "aws_cloudfront_origin_access_control" "website" {
   name                              = "${var.domain_name}-website-oac"
@@ -263,16 +272,8 @@ resource "aws_cloudfront_distribution" "main" {
     compress               = true
     viewer_protocol_policy = "redirect-to-https"
 
-    forwarded_values {
-      query_string = false
-      cookies {
-        forward = "none"
-      }
-    }
-
-    min_ttl     = 0
-    default_ttl = 86400
-    max_ttl     = 31536000
+    cache_policy_id = data.aws_cloudfront_cache_policy.caching_optimized.id
+    response_headers_policy_id = data.aws_cloudfront_response_headers_policy.security_headers.id
   }
 
   # Behavior for activities data
@@ -284,17 +285,8 @@ resource "aws_cloudfront_distribution" "main" {
     compress               = true
     viewer_protocol_policy = "redirect-to-https"
 
-    forwarded_values {
-      query_string = false
-      headers      = ["Origin", "Access-Control-Request-Headers", "Access-Control-Request-Method"]
-      cookies {
-        forward = "none"
-      }
-    }
-
-    min_ttl     = 0
-    default_ttl = 86400
-    max_ttl     = 31536000
+    cache_policy_id = data.aws_cloudfront_cache_policy.caching_optimized.id
+    response_headers_policy_id = data.aws_cloudfront_response_headers_policy.security_headers.id
   }
 
   restrictions {
