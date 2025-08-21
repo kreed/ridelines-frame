@@ -45,19 +45,12 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           role-session-name: ${{ github.run_id }}
 
-      - name: Plan infrastructure changes
-        uses: dflook/terraform-plan@v2
-        with:
-          path: environments/dev
-          workspace: dev
-          var_file: |
-            environments/dev/terraform.tfvars
-
       - name: Apply infrastructure changes
-        uses: dflook/terraform-apply@v2
+        uses: dflook/tofu-apply@v2
         with:
           path: environments/dev
           workspace: dev
+          auto_approve: true
           var_file: |
             environments/dev/terraform.tfvars
 

@@ -48,7 +48,7 @@ jobs:
           role-session-name: ${{ github.run_id }}
 
       - name: Plan production infrastructure changes
-        uses: dflook/terraform-plan@v2
+        uses: dflook/tofu-plan@v2
         with:
           path: environments/prod
           workspace: prod
@@ -89,7 +89,7 @@ jobs:
           role-session-name: ${{ github.run_id }}
 
       - name: Apply production infrastructure changes
-        uses: dflook/terraform-apply@v2
+        uses: dflook/tofu-apply@v2
         with:
           path: environments/prod
           workspace: prod
