@@ -97,3 +97,13 @@ module "drivetrain_lambda" {
   enable_function_url         = var.enable_lambda_function_url
   tags                        = local.common_tags
 }
+
+# GitHub Actions IAM module
+module "github_actions" {
+  source = "../../modules/github-actions-iam"
+
+  project_name      = var.project_name
+  environment       = local.environment
+  github_repository = var.github_repository
+  tags              = local.common_tags
+}

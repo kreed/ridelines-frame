@@ -36,3 +36,9 @@ variable "enable_lambda_function_url" {
   default     = false
 }
 
+variable "github_repository" {
+  description = "GitHub repository in the format 'owner/repo'"
+  type        = string
+  default     = "kreed/ridelines-frame"
+}
+
