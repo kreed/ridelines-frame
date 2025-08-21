@@ -221,6 +221,10 @@ data "aws_cloudfront_cache_policy" "caching_optimized" {
   name = "Managed-CachingOptimized"
 }
 
+data "aws_cloudfront_cache_policy" "caching_disabled" {
+  name = "Managed-CachingDisabled"
+}
+
 data "aws_cloudfront_response_headers_policy" "security_headers" {
   name = "Managed-SecurityHeadersPolicy"
 }
@@ -264,9 +268,22 @@ resource "aws_cloudfront_distribution" "main" {
   aliases             = [var.domain_name]
   price_class         = var.price_class
 
-  # Default behavior for website
+  # Default behavior for website (no caching for root)
   default_cache_behavior {
     allowed_methods        = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+    cached_methods         = ["GET", "HEAD"]
+    target_origin_id       = "S3-${aws_s3_bucket.website.bucket}"
+    compress               = true
+    viewer_protocol_policy = "redirect-to-https"
+
+    cache_policy_id = data.aws_cloudfront_cache_policy.caching_disabled.id
+    response_headers_policy_id = data.aws_cloudfront_response_headers_policy.security_headers.id
+  }
+
+  # Behavior for _app assets (enable caching)
+  ordered_cache_behavior {
+    path_pattern           = "/_app/*"
+    allowed_methods        = ["GET", "HEAD", "OPTIONS"]
     cached_methods         = ["GET", "HEAD"]
     target_origin_id       = "S3-${aws_s3_bucket.website.bucket}"
     compress               = true
@@ -276,7 +293,7 @@ resource "aws_cloudfront_distribution" "main" {
     response_headers_policy_id = data.aws_cloudfront_response_headers_policy.security_headers.id
   }
 
-  # Behavior for activities data
+  # Behavior for activities data (enable caching)
   ordered_cache_behavior {
     path_pattern           = "/activities/*"
     allowed_methods        = ["GET", "HEAD", "OPTIONS"]

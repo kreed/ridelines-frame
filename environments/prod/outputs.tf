@@ -14,3 +14,13 @@ output "github_actions_role_arn" {
   description = "ARN of the GitHub Actions IAM role for prod environment"
   value       = module.github_actions.github_actions_role_arn
 }
+
+output "website_bucket_name" {
+  description = "Name of the S3 bucket for website assets"
+  value       = module.website.website_bucket_name
+}
+
+output "cloudfront_distribution_id" {
+  description = "CloudFront distribution ID"
+  value       = module.website.cloudfront_distribution_id
+}

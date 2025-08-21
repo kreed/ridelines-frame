@@ -94,6 +94,17 @@ jobs:
           var_file: |
             environments/prod/terraform.tfvars
 
+      - name: Get infrastructure outputs
+        id: tf_outputs
+        working-directory: environments/prod
+        run: |
+          WEBSITE_BUCKET=$(tofu output -raw website_bucket_name)
+          echo "website_bucket=${WEBSITE_BUCKET}" >> $GITHUB_OUTPUT
+
+      - name: Deploy hub to S3
+        run: |
+          aws s3 sync artifacts/hub/static-site/ s3://${{ steps.tf_outputs.outputs.website_bucket }}/ --delete
+
       - name: Production deployment summary
         run: |
           echo "## Production Deployment Summary" >> $GITHUB_STEP_SUMMARY
