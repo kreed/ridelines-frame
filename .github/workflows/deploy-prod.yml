@@ -51,7 +51,6 @@ jobs:
         uses: dflook/tofu-plan@v2
         with:
           path: environments/prod
-          workspace: prod
           var_file: |
             environments/prod/terraform.tfvars
 
@@ -92,7 +91,6 @@ jobs:
         uses: dflook/tofu-apply@v2
         with:
           path: environments/prod
-          workspace: prod
           var_file: |
             environments/prod/terraform.tfvars
 

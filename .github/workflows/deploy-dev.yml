@@ -49,7 +49,6 @@ jobs:
         uses: dflook/tofu-apply@v2
         with:
           path: environments/dev
-          workspace: dev
           auto_approve: true
           var_file: |
             environments/dev/terraform.tfvars
