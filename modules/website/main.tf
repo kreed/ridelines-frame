@@ -349,6 +349,19 @@ resource "aws_route53_record" "main" {
   }
 }
 
+# Route53 AAAA record for IPv6
+resource "aws_route53_record" "main_ipv6" {
+  zone_id = var.hosted_zone_id
+  name    = var.domain_name
+  type    = "AAAA"
+
+  alias {
+    name                   = aws_cloudfront_distribution.main.domain_name
+    zone_id                = aws_cloudfront_distribution.main.hosted_zone_id
+    evaluate_target_health = false
+  }
+}
+
 # S3 bucket policies for CloudFront access
 resource "aws_s3_bucket_policy" "website" {
   bucket = aws_s3_bucket.website.id
