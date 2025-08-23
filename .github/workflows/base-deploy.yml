@@ -84,6 +84,21 @@ jobs:
           
           echo "Bundle extracted successfully"
 
+      - name: Validate bundle version
+        run: |
+          # Verify bundle metadata matches expected version
+          BUNDLE_VERSION_LABEL=$(docker inspect ghcr.io/${{ env.BUNDLE_IMAGE }}:${{ steps.release.outputs.bundle_version }} \
+            | jq -r '.[0].Config.Labels["ridelines.bundle.version"]')
+          
+          if [ "$BUNDLE_VERSION_LABEL" != "${{ steps.release.outputs.bundle_version }}" ]; then
+            echo "Error: Bundle version mismatch"
+            echo "Expected: ${{ steps.release.outputs.bundle_version }}"
+            echo "Found: $BUNDLE_VERSION_LABEL"
+            exit 1
+          fi
+          
+          echo "✅ Bundle version validated"
+
       - name: Apply terraform plan
         id: apply
         run: |

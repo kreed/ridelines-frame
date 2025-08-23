@@ -111,6 +111,44 @@ jobs:
           LABEL org.opencontainers.image.source="https://github.com/kreed/ridelines-frame"
           EOF
 
+      - name: Validate bundle structure
+        run: |
+          echo "Validating bundle structure..."
+          
+          # Check required artifact files exist
+          if [ ! -f "artifacts/hub/static-site/index.html" ]; then
+            echo "Error: Hub static site index.html not found"
+            exit 1
+          fi
+          
+          if [ ! -f "artifacts/drivetrain/lambda.zip" ]; then
+            echo "Error: Drivetrain lambda.zip not found"
+            exit 1
+          fi
+          
+          if [ ! -f "artifacts/drivetrain/layer.zip" ]; then
+            echo "Error: Drivetrain layer.zip not found"
+            exit 1
+          fi
+          
+          # Check terraform structure
+          for env in dev prod; do
+            if [ ! -f "environments/$env/main.tf" ]; then
+              echo "Error: Terraform main.tf not found for $env environment"
+              exit 1
+            fi
+            if [ ! -f "environments/$env/terraform.tfvars" ]; then
+              echo "Error: Terraform tfvars not found for $env environment"
+              exit 1
+            fi
+          done
+          
+          # Verify zip files are valid
+          unzip -t artifacts/drivetrain/lambda.zip > /dev/null || { echo "Error: Invalid lambda.zip"; exit 1; }
+          unzip -t artifacts/drivetrain/layer.zip > /dev/null || { echo "Error: Invalid layer.zip"; exit 1; }
+          
+          echo "✅ Bundle validation passed"
+
       - name: Build and push bundle container
         uses: docker/build-push-action@v5
         with:
