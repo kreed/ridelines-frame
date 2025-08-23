@@ -1,0 +1,21 @@
+name: Deploy to Development
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+  packages: write
+  id-token: write
+
+jobs:
+  deploy:
+    name: Deploy to Development
+    # Only trigger for dev staging releases (prereleases starting with "dev-")
+    if: github.event.release.prerelease == true && startsWith(github.event.release.name, 'dev-')
+    uses: ./.github/workflows/base-deploy.yml
+    with:
+      environment: dev
+      release_name: ${{ github.event.release.name }}
+    secrets: inherit

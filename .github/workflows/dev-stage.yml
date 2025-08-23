@@ -1,0 +1,20 @@
+name: Stage Development Release
+
+on:
+  registry_package:
+    types: [published]
+
+permissions:
+  contents: write
+  packages: read
+
+jobs:
+  stage:
+    name: Stage Development Release
+    if: github.event.registry_package.package_type == 'container' && github.event.registry_package.name == 'ridelines-bundle'
+    uses: ./.github/workflows/base-stage.yml
+    with:
+      environment: dev
+      bundle_version: ${{ github.event.registry_package.package_version.name }}
+      trigger_type: new_bundle
+    secrets: inherit

@@ -1,0 +1,166 @@
+name: Base Deployment Workflow
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: 'Target environment (dev/prod)'
+        required: true
+        type: string
+      release_name:
+        description: 'Name of staging release to deploy'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  packages: write
+  id-token: write
+
+env:
+  REGISTRY: ghcr.io
+  BUNDLE_IMAGE: kreed/ridelines-bundle
+
+jobs:
+  deploy:
+    name: Deploy to ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+
+    steps:
+      - name: Checkout frame repository
+        uses: actions/checkout@v5
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          role-session-name: ${{ github.run_id }}
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get release information
+        id: release
+        run: |
+          # Get release details
+          RELEASE_INFO=$(gh release view "${{ inputs.release_name }}" --json body,assets)
+          
+          # Extract bundle version from release name (format: env-YYYYMMDD-hash)
+          BUNDLE_VERSION=$(echo "${{ inputs.release_name }}" | sed 's/^[^-]*-//')
+          echo "bundle_version=${BUNDLE_VERSION}" >> $GITHUB_OUTPUT
+          
+          # Verify this is a staging release (prerelease)
+          IS_PRERELEASE=$(gh release view "${{ inputs.release_name }}" --json isPrerelease --jq '.isPrerelease')
+          if [ "$IS_PRERELEASE" != "true" ]; then
+            echo "Error: Release ${{ inputs.release_name }} is not a staging release"
+            exit 1
+          fi
+          
+          echo "Bundle version: ${BUNDLE_VERSION}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download terraform plan
+        run: |
+          gh release download "${{ inputs.release_name }}" \
+            --pattern "terraform-${{ inputs.environment }}.tfplan" \
+            --dir .
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract deployment bundle
+        run: |
+          # Pull and extract bundle
+          docker pull ghcr.io/${{ env.BUNDLE_IMAGE }}:${{ steps.release.outputs.bundle_version }}
+          docker create --name bundle-extract ghcr.io/${{ env.BUNDLE_IMAGE }}:${{ steps.release.outputs.bundle_version }} /bin/sh
+          docker cp bundle-extract:/deployment/ ./deployment/
+          docker rm bundle-extract
+          
+          echo "Bundle extracted successfully"
+
+      - name: Apply terraform plan
+        id: apply
+        run: |
+          cd deployment/terraform/environments/${{ inputs.environment }}
+          tofu init
+          
+          # Apply the exact plan that was reviewed
+          tofu apply ../../../../../terraform-${{ inputs.environment }}.tfplan
+          
+          # Get outputs
+          WEBSITE_BUCKET=$(tofu output -raw website_bucket_name)
+          echo "website_bucket_name=${WEBSITE_BUCKET}" >> $GITHUB_OUTPUT
+
+      - name: Deploy hub static assets to S3
+        run: |
+          aws s3 sync deployment/artifacts/hub/static-site/ \
+            s3://${{ steps.apply.outputs.website_bucket_name }}/ \
+            --delete
+
+      - name: Tag bundle with environment
+        run: |
+          # Tag the bundle as current for this environment
+          docker tag ghcr.io/${{ env.BUNDLE_IMAGE }}:${{ steps.release.outputs.bundle_version }} \
+            ghcr.io/${{ env.BUNDLE_IMAGE }}:${{ inputs.environment }}-current
+          
+          docker push ghcr.io/${{ env.BUNDLE_IMAGE }}:${{ inputs.environment }}-current
+
+      - name: Update release to deployed
+        run: |
+          # Update release from prerelease to full release (deployed)
+          gh release edit "${{ inputs.release_name }}" \
+            --prerelease=false \
+            --latest=${{ inputs.environment == 'prod' }}
+          
+          # Update release notes to show deployed status
+          CURRENT_NOTES=$(gh release view "${{ inputs.release_name }}" --json body --jq '.body')
+          DEPLOYMENT_TIME=$(date -Iseconds)
+          
+          # Update status and add deployment info
+          UPDATED_NOTES=$(echo "$CURRENT_NOTES" | sed 's/### Status: 🟡 Staging/### Status: ✅ Deployed/')
+          UPDATED_NOTES="${UPDATED_NOTES}
+
+### Deployment Information
+- **Deployed at**: ${DEPLOYMENT_TIME}
+- **Deployment workflow**: [Run #${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+- **Deployed by**: @${{ github.actor }}"
+          
+          gh release edit "${{ inputs.release_name }}" \
+            --notes "$UPDATED_NOTES"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Clean up old staging releases
+        run: |
+          # Delete staging releases older than 7 days for this environment
+          CUTOFF_DATE=$(date -d '7 days ago' +%s)
+          
+          gh release list --limit 100 --json name,tagName,isPrerelease,createdAt \
+            --jq '.[] | select(.isPrerelease == true and (.name | startswith("${{ inputs.environment }}-")))' | \
+          while IFS= read -r release; do
+            RELEASE_NAME=$(echo "$release" | jq -r '.name')
+            CREATED_AT=$(echo "$release" | jq -r '.createdAt')
+            CREATED_TIMESTAMP=$(date -d "$CREATED_AT" +%s)
+            
+            if [ "$CREATED_TIMESTAMP" -lt "$CUTOFF_DATE" ]; then
+              echo "Deleting old staging release: $RELEASE_NAME"
+              gh release delete "$RELEASE_NAME" --yes
+            fi
+          done
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Deployment summary
+        run: |
+          echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Successfully deployed to ${{ inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "📦 Bundle: ${{ steps.release.outputs.bundle_version }}" >> $GITHUB_STEP_SUMMARY
+          echo "🪣 S3 Bucket: ${{ steps.apply.outputs.website_bucket_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "🏷️ Tagged as: ${{ inputs.environment }}-current" >> $GITHUB_STEP_SUMMARY
+          echo "📋 Release: [${{ inputs.release_name }}](${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ inputs.release_name }})" >> $GITHUB_STEP_SUMMARY

@@ -1,0 +1,161 @@
+name: Base Stage Workflow
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: 'Target environment (dev/prod)'
+        required: true
+        type: string
+      bundle_version:
+        description: 'Bundle version to create release for'
+        required: true
+        type: string
+      trigger_type:
+        description: 'What triggered this (new_bundle/dev_deployed)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  packages: read
+
+env:
+  REGISTRY: ghcr.io
+  BUNDLE_IMAGE: kreed/ridelines-bundle
+
+jobs:
+  stage:
+    name: Stage ${{ inputs.environment }} Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout frame repository
+        uses: actions/checkout@v5
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get bundle metadata
+        id: bundle
+        run: |
+          # Pull the specific bundle version
+          docker pull ghcr.io/${{ env.BUNDLE_IMAGE }}:${{ inputs.bundle_version }}
+          
+          # Extract metadata from container labels
+          FRAME_COMMIT=$(docker inspect ghcr.io/${{ env.BUNDLE_IMAGE }}:${{ inputs.bundle_version }} | jq -r '.[0].Config.Labels["ridelines.commit.frame"]')
+          HUB_COMMIT=$(docker inspect ghcr.io/${{ env.BUNDLE_IMAGE }}:${{ inputs.bundle_version }} | jq -r '.[0].Config.Labels["ridelines.commit.hub"]')
+          DRIVETRAIN_COMMIT=$(docker inspect ghcr.io/${{ env.BUNDLE_IMAGE }}:${{ inputs.bundle_version }} | jq -r '.[0].Config.Labels["ridelines.commit.drivetrain"]')
+          TIPPECANOE_COMMIT=$(docker inspect ghcr.io/${{ env.BUNDLE_IMAGE }}:${{ inputs.bundle_version }} | jq -r '.[0].Config.Labels["ridelines.commit.tippecanoe"]')
+          
+          echo "frame_commit=${FRAME_COMMIT}" >> $GITHUB_OUTPUT
+          echo "hub_commit=${HUB_COMMIT}" >> $GITHUB_OUTPUT
+          echo "drivetrain_commit=${DRIVETRAIN_COMMIT}" >> $GITHUB_OUTPUT
+          echo "tippecanoe_commit=${TIPPECANOE_COMMIT}" >> $GITHUB_OUTPUT
+
+      - name: Get previous deployed release
+        id: previous
+        run: |
+          # Get the latest non-prerelease (deployed) release for this environment
+          PREVIOUS_RELEASE=$(gh release list \
+            --exclude-pre-releases \
+            --limit 100 \
+            --json name,tagName \
+            --jq '.[] | select(.name | startswith("${{ inputs.environment }}-")) | .name' | head -1)
+          
+          if [ -n "$PREVIOUS_RELEASE" ]; then
+            echo "previous_release=${PREVIOUS_RELEASE}" >> $GITHUB_OUTPUT
+            echo "previous_found=true" >> $GITHUB_OUTPUT
+            echo "Previous deployed release: ${PREVIOUS_RELEASE}"
+          else
+            echo "previous_found=false" >> $GITHUB_OUTPUT
+            echo "No previous deployed release found for ${{ inputs.environment }}"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate terraform plan
+        run: |
+          # Extract bundle to get terraform files
+          docker create --name bundle-extract ghcr.io/${{ env.BUNDLE_IMAGE }}:${{ inputs.bundle_version }} /bin/sh
+          docker cp bundle-extract:/deployment/terraform/ ./terraform-staging/
+          docker rm bundle-extract
+          
+          # Generate plan for specified environment
+          cd terraform-staging/environments/${{ inputs.environment }}
+          tofu init
+          tofu plan -out=plan.tfplan -var-file=terraform.tfvars
+          tofu show plan.tfplan > ../../../terraform-plan.txt
+          
+          # Move plan file to workspace root for upload
+          mv plan.tfplan ../../../terraform-${{ inputs.environment }}.tfplan
+
+      - name: Create prerelease
+        run: |
+          RELEASE_NAME="${{ inputs.environment }}-${{ inputs.bundle_version }}"
+          
+          # Build release description
+          cat > release-description.md << 'EOF'
+          ## Deployment Bundle: ${{ inputs.bundle_version }}
+
+          ### Status: 🟡 Staging
+
+          ### Environment: ${{ inputs.environment }}
+
+          ### Components
+          - **Frame**: [${{ steps.bundle.outputs.frame_commit }}](https://github.com/kreed/ridelines-frame/commit/${{ steps.bundle.outputs.frame_commit }})
+          - **Hub**: [${{ steps.bundle.outputs.hub_commit }}](https://github.com/kreed/ridelines-hub/commit/${{ steps.bundle.outputs.hub_commit }})
+          - **Drivetrain**: [${{ steps.bundle.outputs.drivetrain_commit }}](https://github.com/kreed/ridelines-drivetrain/commit/${{ steps.bundle.outputs.drivetrain_commit }})
+          - **Tippecanoe**: [${{ steps.bundle.outputs.tippecanoe_commit }}](https://github.com/felt/tippecanoe/commit/${{ steps.bundle.outputs.tippecanoe_commit }})
+
+          ### Changes from Previous Deployment
+          EOF
+          
+          if [ "${{ steps.previous.outputs.previous_found }}" = "true" ]; then
+            cat >> release-description.md << 'EOF'
+          Previous deployment: [${{ steps.previous.outputs.previous_release }}](https://github.com/kreed/ridelines-frame/releases/tag/${{ steps.previous.outputs.previous_release }})
+
+          🔄 **Note**: Detailed commit comparisons will be implemented in next iteration
+          EOF
+          else
+            cat >> release-description.md << 'EOF'
+          🆕 **First ${{ inputs.environment }} deployment** - no previous release to compare
+          EOF
+          fi
+          
+          cat >> release-description.md << 'EOF'
+
+          ### Terraform Plan
+          <details>
+          <summary>Click to expand plan</summary>
+
+          ```hcl
+          EOF
+          
+          cat terraform-plan.txt >> release-description.md
+          
+          cat >> release-description.md << 'EOF'
+          ```
+          </details>
+
+          ### Deployment Details
+          - Bundle: `ghcr.io/${{ env.BUNDLE_IMAGE }}:${{ inputs.bundle_version }}`
+          - Triggered by: ${{ inputs.trigger_type }}
+          - [Workflow Run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+          ### Next Steps
+          The deployment workflow will be triggered automatically when this staging release is created.
+          EOF
+          
+          # Create the release as a prerelease (staging)
+          gh release create "${RELEASE_NAME}" \
+            --title "${{ inputs.environment == 'prod' && 'Production' || 'Development' }} Staging: ${{ inputs.bundle_version }}" \
+            --notes-file release-description.md \
+            --prerelease \
+            terraform-${{ inputs.environment }}.tfplan
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
