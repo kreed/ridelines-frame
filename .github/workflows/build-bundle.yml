@@ -40,7 +40,7 @@ jobs:
           
           # Pull and extract hub container (latest)
           docker pull ghcr.io/kreed/ridelines-hub:latest
-          docker create --name hub-extract ghcr.io/kreed/ridelines-hub:latest
+          docker create --name hub-extract ghcr.io/kreed/ridelines-hub:latest /bin/sh
           docker cp hub-extract:/static-site/ artifacts/hub/
           docker rm hub-extract
 
@@ -51,13 +51,13 @@ jobs:
           
           # Pull and extract lambda container (latest)
           docker pull ghcr.io/kreed/ridelines-drivetrain:latest
-          docker create --name lambda-extract ghcr.io/kreed/ridelines-drivetrain:latest
+          docker create --name lambda-extract ghcr.io/kreed/ridelines-drivetrain:latest /bin/sh
           docker cp lambda-extract:/lambda-package.zip artifacts/drivetrain/lambda.zip
           docker rm lambda-extract
           
           # Pull and extract layer container (latest)
           docker pull ghcr.io/kreed/ridelines-tippecanoe-layer:latest
-          docker create --name layer-extract ghcr.io/kreed/ridelines-tippecanoe-layer:latest
+          docker create --name layer-extract ghcr.io/kreed/ridelines-tippecanoe-layer:latest /bin/sh
           docker cp layer-extract:/layer-package.zip artifacts/drivetrain/layer.zip
           docker rm layer-extract
 
