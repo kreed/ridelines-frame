@@ -1,0 +1,142 @@
+name: Build Deployment Bundle
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '*.md'
+      - '.gitignore'
+      - 'LICENSE'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  BUNDLE_IMAGE: kreed/ridelines-bundle
+
+jobs:
+  build-bundle:
+    name: Build Deployment Bundle
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout frame repository
+        uses: actions/checkout@v5
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download hub artifacts
+        run: |
+          echo "Downloading latest hub artifacts..."
+          mkdir -p artifacts/hub
+          
+          # Pull and extract hub container (latest)
+          docker pull ghcr.io/kreed/ridelines-hub:latest
+          docker create --name hub-extract ghcr.io/kreed/ridelines-hub:latest
+          docker cp hub-extract:/static-site/ artifacts/hub/
+          docker rm hub-extract
+
+      - name: Download drivetrain artifacts
+        run: |
+          echo "Downloading latest drivetrain artifacts..."
+          mkdir -p artifacts/drivetrain
+          
+          # Pull and extract lambda container (latest)
+          docker pull ghcr.io/kreed/ridelines-drivetrain:latest
+          docker create --name lambda-extract ghcr.io/kreed/ridelines-drivetrain:latest
+          docker cp lambda-extract:/lambda-package.zip artifacts/drivetrain/lambda.zip
+          docker rm lambda-extract
+          
+          # Pull and extract layer container (latest)
+          docker pull ghcr.io/kreed/ridelines-tippecanoe-layer:latest
+          docker create --name layer-extract ghcr.io/kreed/ridelines-tippecanoe-layer:latest
+          docker cp layer-extract:/layer-package.zip artifacts/drivetrain/layer.zip
+          docker rm layer-extract
+
+      - name: Get commit SHAs from container labels
+        id: commits
+        run: |
+          # Get frame commit
+          FRAME_COMMIT=$(git rev-parse HEAD)
+          echo "frame_commit=${FRAME_COMMIT}" >> $GITHUB_OUTPUT
+          
+          # Extract commit SHAs from container labels
+          HUB_COMMIT=$(docker inspect ghcr.io/kreed/ridelines-hub:latest | jq -r '.[0].Config.Labels["ridelines.hub.commit"]')
+          DRIVETRAIN_COMMIT=$(docker inspect ghcr.io/kreed/ridelines-drivetrain:latest | jq -r '.[0].Config.Labels["ridelines.drivetrain.commit"]')
+          TIPPECANOE_COMMIT=$(docker inspect ghcr.io/kreed/ridelines-tippecanoe-layer:latest | jq -r '.[0].Config.Labels["ridelines.tippecanoe.commit"]')
+          
+          echo "hub_commit=${HUB_COMMIT}" >> $GITHUB_OUTPUT
+          echo "drivetrain_commit=${DRIVETRAIN_COMMIT}" >> $GITHUB_OUTPUT
+          echo "tippecanoe_commit=${TIPPECANOE_COMMIT}" >> $GITHUB_OUTPUT
+          
+          echo "Frame commit: ${FRAME_COMMIT}"
+          echo "Hub commit: ${HUB_COMMIT}"
+          echo "Drivetrain commit: ${DRIVETRAIN_COMMIT}"
+          echo "Tippecanoe commit: ${TIPPECANOE_COMMIT}"
+
+      - name: Generate bundle version
+        id: bundle
+        run: |
+          # Generate bundle version: YYYYMMDD-{6-char-hash}
+          DATE=$(date +%Y%m%d)
+          HASH=$(echo $RANDOM | md5sum | head -c 6)
+          BUNDLE_VERSION="${DATE}-${HASH}"
+          
+          echo "bundle_version=${BUNDLE_VERSION}" >> $GITHUB_OUTPUT
+          echo "Bundle version: ${BUNDLE_VERSION}"
+
+      - name: Create bundle Dockerfile
+        run: |
+          cat > Dockerfile.bundle << 'EOF'
+          FROM scratch
+          
+          # Copy all artifacts
+          COPY artifacts/ /deployment/artifacts/
+          
+          # Copy terraform configuration
+          COPY environments/ /deployment/terraform/environments/
+          COPY modules/ /deployment/terraform/modules/
+          
+          # Add metadata labels
+          LABEL org.opencontainers.image.title="Ridelines Deployment Bundle"
+          LABEL org.opencontainers.image.description="Complete deployment bundle containing all artifacts and terraform configuration"
+          LABEL org.opencontainers.image.source="https://github.com/kreed/ridelines-frame"
+          EOF
+
+      - name: Build and push bundle container
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.bundle
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.BUNDLE_IMAGE }}:${{ steps.bundle.outputs.bundle_version }}
+            ${{ env.REGISTRY }}/${{ env.BUNDLE_IMAGE }}:latest
+          labels: |
+            org.opencontainers.image.revision=${{ steps.commits.outputs.frame_commit }}
+            ridelines.bundle.version=${{ steps.bundle.outputs.bundle_version }}
+            ridelines.bundle.created_at=$(date -Iseconds)
+            ridelines.commit.frame=${{ steps.commits.outputs.frame_commit }}
+            ridelines.commit.hub=${{ steps.commits.outputs.hub_commit }}
+            ridelines.commit.drivetrain=${{ steps.commits.outputs.drivetrain_commit }}
+            ridelines.commit.tippecanoe=${{ steps.commits.outputs.tippecanoe_commit }}
+
+      - name: Bundle summary
+        run: |
+          echo "## Deployment Bundle Created" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Bundle version: ${{ steps.bundle.outputs.bundle_version }}" >> $GITHUB_STEP_SUMMARY
+          echo "📦 Container: ${{ env.REGISTRY }}/${{ env.BUNDLE_IMAGE }}:${{ steps.bundle.outputs.bundle_version }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Component Commits" >> $GITHUB_STEP_SUMMARY
+          echo "- **Frame**: [${{ steps.commits.outputs.frame_commit }}](https://github.com/kreed/ridelines-frame/commit/${{ steps.commits.outputs.frame_commit }})" >> $GITHUB_STEP_SUMMARY
+          echo "- **Hub**: [${{ steps.commits.outputs.hub_commit }}](https://github.com/kreed/ridelines-hub/commit/${{ steps.commits.outputs.hub_commit }})" >> $GITHUB_STEP_SUMMARY
+          echo "- **Drivetrain**: [${{ steps.commits.outputs.drivetrain_commit }}](https://github.com/kreed/ridelines-drivetrain/commit/${{ steps.commits.outputs.drivetrain_commit }})" >> $GITHUB_STEP_SUMMARY
+          echo "- **Tippecanoe**: [${{ steps.commits.outputs.tippecanoe_commit }}](https://github.com/felt/tippecanoe/commit/${{ steps.commits.outputs.tippecanoe_commit }})" >> $GITHUB_STEP_SUMMARY
