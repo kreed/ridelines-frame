@@ -1,5 +1,7 @@
 name: Build Deployment Bundle
 
+run-name: ${{ github.event_name == 'push' && github.event.head_commit.message || format('Triggered by {0}', inputs.triggered_by) }}
+
 on:
   push:
     branches: [main]
