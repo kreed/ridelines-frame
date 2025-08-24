@@ -11,23 +11,13 @@ variable "environment" {
 variable "lambda_package_path" {
   description = "Path to the Lambda deployment package"
   type        = string
-  default     = "../../../artifacts/drivetrain/lambda.zip"
+  default     = "../../../artifacts/lambda/lambda-package.zip"
 }
 
 variable "tippecanoe_layer_package_path" {
   description = "Path to the tippecanoe Lambda layer package"
   type        = string
-  default     = "../../../artifacts/drivetrain/layer.zip"
-}
-
-variable "athlete_state_bucket_name" {
-  description = "Name of the S3 bucket for athlete state (GeoJSON)"
-  type        = string
-}
-
-variable "athlete_state_bucket_arn" {
-  description = "ARN of the S3 bucket for athlete state (GeoJSON)"
-  type        = string
+  default     = "../../../artifacts/layer/layer-package.zip"
 }
 
 variable "activities_bucket_name" {
@@ -54,6 +44,16 @@ variable "enable_function_url" {
   description = "Enable Lambda function URL"
   type        = bool
   default     = false
+}
+
+variable "users_table_name" {
+  description = "Name of the DynamoDB users table"
+  type        = string
+}
+
+variable "users_table_arn" {
+  description = "ARN of the DynamoDB users table"
+  type        = string
 }
 
 variable "tags" {

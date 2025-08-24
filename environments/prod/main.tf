@@ -82,9 +82,30 @@ module "athlete_state" {
   tags         = local.common_tags
 }
 
-# Drivetrain Lambda module
-module "drivetrain_lambda" {
-  source = "../../modules/drivetrain-lambda"
+# Users module (DynamoDB table for user profiles and sync status)
+module "drivetrain_users" {
+  source = "../../modules/drivetrain-users"
+
+  project_name        = var.project_name
+  environment         = local.environment
+  enable_function_url = var.enable_lambda_function_url
+  tags                = local.common_tags
+}
+
+# Auth module (OAuth infrastructure)
+module "drivetrain_auth" {
+  source = "../../modules/drivetrain-auth"
+
+  project_name     = var.project_name
+  environment      = local.environment
+  users_table_name = module.drivetrain_users.users_table_name
+  users_table_arn  = module.drivetrain_users.users_table_arn
+  tags             = local.common_tags
+}
+
+# Sync module (existing activity sync functionality)
+module "drivetrain_sync" {
+  source = "../../modules/drivetrain-sync"
 
   project_name                = var.project_name
   environment                 = local.environment
@@ -94,6 +115,8 @@ module "drivetrain_lambda" {
   activities_bucket_arn       = "arn:aws:s3:::${module.website.activities_bucket_name}"
   cloudfront_distribution_id  = module.website.cloudfront_distribution_id
   cloudfront_distribution_arn = module.website.cloudfront_distribution_arn
+  users_table_name            = module.drivetrain_users.users_table_name
+  users_table_arn             = module.drivetrain_users.users_table_arn
   enable_function_url         = var.enable_lambda_function_url
   tags                        = local.common_tags
 }
