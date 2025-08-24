@@ -121,7 +121,7 @@ jobs:
           tofu init
           
           # Apply the exact OpenTofu plan that was reviewed
-          tofu apply -auto-approve ../../../../../opentofu-${{ inputs.environment }}.tfplan
+          tofu apply -auto-approve $GITHUB_WORKSPACE/opentofu-${{ inputs.environment }}.tfplan
           
           # Get outputs
           WEBSITE_BUCKET=$(tofu output -raw website_bucket_name)
