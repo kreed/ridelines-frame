@@ -149,75 +149,64 @@ jobs:
           
           # Build release description
           cat > release-description.md << 'EOF'
-          ## Deployment Bundle: ${{ steps.bundle.outputs.bundle_version }}
+          **Status:** 🟡 Staged
 
-          ### Status: 🟡 Staging
-
-          ### Environment: ${{ inputs.environment }}
-
-          ### Components
-          - **Frame**: [${{ steps.bundle.outputs.frame_commit }}](https://github.com/kreed/ridelines-frame/commit/${{ steps.bundle.outputs.frame_commit }})
-          - **Hub**: [${{ steps.bundle.outputs.hub_commit }}](https://github.com/kreed/ridelines-hub/commit/${{ steps.bundle.outputs.hub_commit }})
-          - **Drivetrain**: [${{ steps.bundle.outputs.drivetrain_commit }}](https://github.com/kreed/ridelines-drivetrain/commit/${{ steps.bundle.outputs.drivetrain_commit }})
-          - **Tippecanoe**: [${{ steps.bundle.outputs.tippecanoe_commit }}](https://github.com/felt/tippecanoe/commit/${{ steps.bundle.outputs.tippecanoe_commit }})
-
-          ### Changes from Previous Deployment
+          **Components**
           EOF
           
-          if [ "${{ steps.previous.outputs.previous_found }}" = "true" ]; then
-            cat >> release-description.md << 'EOF'
-          Previous deployment: [${{ steps.previous.outputs.previous_release }}](https://github.com/kreed/ridelines-frame/releases/tag/${{ steps.previous.outputs.previous_release }})
-
-          EOF
+          if [ "${{ steps.previous.outputs.previous_found }}" = "true" ] && [ "${{ steps.previous_commits.outputs.commits_available }}" = "true" ]; then
+            # Show changes with diff links or "unchanged"
             
-            if [ "${{ steps.previous_commits.outputs.commits_available }}" = "true" ]; then
-              cat >> release-description.md << 'EOF'
-          #### Component Changes:
-          EOF
-              
-              # Add diff links for each component (or "No changes" if commits are identical)
-              
-              # Frame
-              if [ "${{ steps.previous_commits.outputs.prev_frame_commit }}" = "${{ steps.bundle.outputs.frame_commit }}" ]; then
-                echo "- **Frame**: No changes" >> release-description.md
-              else
-                echo "- **Frame**: [\`$(echo ${{ steps.previous_commits.outputs.prev_frame_commit }} | cut -c1-7)..$(echo ${{ steps.bundle.outputs.frame_commit }} | cut -c1-7)\`](https://github.com/kreed/ridelines-frame/compare/${{ steps.previous_commits.outputs.prev_frame_commit }}..${{ steps.bundle.outputs.frame_commit }})" >> release-description.md
-              fi
-              
-              # Hub  
-              if [ "${{ steps.previous_commits.outputs.prev_hub_commit }}" = "${{ steps.bundle.outputs.hub_commit }}" ]; then
-                echo "- **Hub**: No changes" >> release-description.md
-              else
-                echo "- **Hub**: [\`$(echo ${{ steps.previous_commits.outputs.prev_hub_commit }} | cut -c1-7)..$(echo ${{ steps.bundle.outputs.hub_commit }} | cut -c1-7)\`](https://github.com/kreed/ridelines-hub/compare/${{ steps.previous_commits.outputs.prev_hub_commit }}..${{ steps.bundle.outputs.hub_commit }})" >> release-description.md
-              fi
-              
-              # Drivetrain
-              if [ "${{ steps.previous_commits.outputs.prev_drivetrain_commit }}" = "${{ steps.bundle.outputs.drivetrain_commit }}" ]; then
-                echo "- **Drivetrain**: No changes" >> release-description.md
-              else
-                echo "- **Drivetrain**: [\`$(echo ${{ steps.previous_commits.outputs.prev_drivetrain_commit }} | cut -c1-7)..$(echo ${{ steps.bundle.outputs.drivetrain_commit }} | cut -c1-7)\`](https://github.com/kreed/ridelines-drivetrain/compare/${{ steps.previous_commits.outputs.prev_drivetrain_commit }}..${{ steps.bundle.outputs.drivetrain_commit }})" >> release-description.md
-              fi
-              
-              # Tippecanoe
-              if [ "${{ steps.previous_commits.outputs.prev_tippecanoe_commit }}" = "${{ steps.bundle.outputs.tippecanoe_commit }}" ]; then
-                echo "- **Tippecanoe**: No changes" >> release-description.md
-              else  
-                echo "- **Tippecanoe**: [\`$(echo ${{ steps.previous_commits.outputs.prev_tippecanoe_commit }} | cut -c1-7)..$(echo ${{ steps.bundle.outputs.tippecanoe_commit }} | cut -c1-7)\`](https://github.com/felt/tippecanoe/compare/${{ steps.previous_commits.outputs.prev_tippecanoe_commit }}..${{ steps.bundle.outputs.tippecanoe_commit }})" >> release-description.md
-              fi
+            # Frame
+            if [ "${{ steps.previous_commits.outputs.prev_frame_commit }}" = "${{ steps.bundle.outputs.frame_commit }}" ]; then
+              echo "- Frame: $(echo ${{ steps.bundle.outputs.frame_commit }} | cut -c1-7) (unchanged)" >> release-description.md
             else
-              cat >> release-description.md << 'EOF'
-          Previous bundle image not available for detailed comparison.
-          EOF
+              echo "- Frame: [$(echo ${{ steps.previous_commits.outputs.prev_frame_commit }} | cut -c1-7)..$(echo ${{ steps.bundle.outputs.frame_commit }} | cut -c1-7)](https://github.com/kreed/ridelines-frame/compare/${{ steps.previous_commits.outputs.prev_frame_commit }}..${{ steps.bundle.outputs.frame_commit }})" >> release-description.md
+            fi
+            
+            # Hub  
+            if [ "${{ steps.previous_commits.outputs.prev_hub_commit }}" = "${{ steps.bundle.outputs.hub_commit }}" ]; then
+              echo "- Hub: $(echo ${{ steps.bundle.outputs.hub_commit }} | cut -c1-7) (unchanged)" >> release-description.md
+            else
+              echo "- Hub: [$(echo ${{ steps.previous_commits.outputs.prev_hub_commit }} | cut -c1-7)..$(echo ${{ steps.bundle.outputs.hub_commit }} | cut -c1-7)](https://github.com/kreed/ridelines-hub/compare/${{ steps.previous_commits.outputs.prev_hub_commit }}..${{ steps.bundle.outputs.hub_commit }})" >> release-description.md
+            fi
+            
+            # Drivetrain
+            if [ "${{ steps.previous_commits.outputs.prev_drivetrain_commit }}" = "${{ steps.bundle.outputs.drivetrain_commit }}" ]; then
+              echo "- Drivetrain: $(echo ${{ steps.bundle.outputs.drivetrain_commit }} | cut -c1-7) (unchanged)" >> release-description.md
+            else
+              echo "- Drivetrain: [$(echo ${{ steps.previous_commits.outputs.prev_drivetrain_commit }} | cut -c1-7)..$(echo ${{ steps.bundle.outputs.drivetrain_commit }} | cut -c1-7)](https://github.com/kreed/ridelines-drivetrain/compare/${{ steps.previous_commits.outputs.prev_drivetrain_commit }}..${{ steps.bundle.outputs.drivetrain_commit }})" >> release-description.md
+            fi
+            
+            # Tippecanoe
+            if [ "${{ steps.previous_commits.outputs.prev_tippecanoe_commit }}" = "${{ steps.bundle.outputs.tippecanoe_commit }}" ]; then
+              echo "- Tippecanoe: $(echo ${{ steps.bundle.outputs.tippecanoe_commit }} | cut -c1-7) (unchanged)" >> release-description.md
+            else  
+              echo "- Tippecanoe: [$(echo ${{ steps.previous_commits.outputs.prev_tippecanoe_commit }} | cut -c1-7)..$(echo ${{ steps.bundle.outputs.tippecanoe_commit }} | cut -c1-7)](https://github.com/felt/tippecanoe/compare/${{ steps.previous_commits.outputs.prev_tippecanoe_commit }}..${{ steps.bundle.outputs.tippecanoe_commit }})" >> release-description.md
             fi
           else
+            # Show current commits without diff links
             cat >> release-description.md << 'EOF'
-          🆕 **First ${{ inputs.environment }} deployment** - no previous release to compare
+          - Frame: ${{ steps.bundle.outputs.frame_commit }}
+          - Hub: ${{ steps.bundle.outputs.hub_commit }}
+          - Drivetrain: ${{ steps.bundle.outputs.drivetrain_commit }}
+          - Tippecanoe: ${{ steps.bundle.outputs.tippecanoe_commit }}
           EOF
           fi
           
+          echo "" >> release-description.md
+          
+          if [ "${{ steps.previous.outputs.previous_found }}" = "true" ]; then
+            echo "**Previous deployment:** [${{ steps.previous.outputs.previous_release }}](https://github.com/kreed/ridelines-frame/releases/tag/${{ steps.previous.outputs.previous_release }})" >> release-description.md
+          else
+            echo "**Previous deployment:** None (first ${{ inputs.environment }} deployment)" >> release-description.md
+          fi
+          
+          echo "**Workflow Run:** [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> release-description.md
+          
           cat >> release-description.md << 'EOF'
 
-          ### OpenTofu Plan
+          **OpenTofu Plan**
           <details>
           <summary>Click to expand plan</summary>
 
@@ -229,13 +218,6 @@ jobs:
           cat >> release-description.md << 'EOF'
           ```
           </details>
-
-          ### Deployment Details
-          - Bundle: `ghcr.io/${{ env.BUNDLE_IMAGE }}:${{ steps.bundle.outputs.bundle_version }}`
-          - [Workflow Run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
-
-          ### Next Steps
-          The deployment workflow will be triggered automatically when this staging release is created.
           EOF
           
           # Create the release as a prerelease (staging)

@@ -148,7 +148,7 @@ jobs:
           DEPLOYMENT_TIME=$(date -Iseconds)
           
           # Update status and add deployment info
-          UPDATED_NOTES=$(echo "$CURRENT_NOTES" | sed 's/### Status: 🟡 Staging/### Status: ✅ Deployed/')
+          UPDATED_NOTES=$(echo "$CURRENT_NOTES" | sed 's/\*\*Status:\*\* 🟡 Staged/\*\*Status:\*\* ✅ Deployed/')
           UPDATED_NOTES="${UPDATED_NOTES}
           
           ### Deployment Information
