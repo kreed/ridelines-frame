@@ -29,6 +29,7 @@ jobs:
   stage:
     name: Stage ${{ inputs.environment }} Release
     runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}-staging
 
     steps:
       - name: Checkout frame repository
