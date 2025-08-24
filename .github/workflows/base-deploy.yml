@@ -140,7 +140,8 @@ jobs:
           # Update release from prerelease to full release (deployed)
           gh release edit "${{ steps.release.outputs.release_name }}" \
             --prerelease=false \
-            --latest=${{ inputs.environment == 'prod' }}
+            --latest=${{ inputs.environment == 'prod' }} \
+            --title "${{ inputs.environment == 'prod' && 'Production' || 'Development' }} Deployment: ${{ inputs.bundle_version }}"
           
           # Update release notes to show deployed status
           CURRENT_NOTES=$(gh release view "${{ steps.release.outputs.release_name }}" --json body --jq '.body')

@@ -85,7 +85,7 @@ jobs:
             --exclude-pre-releases \
             --limit 100 \
             --json name,tagName \
-            --jq '.[] | select(.name | startswith("${{ inputs.environment }}-")) | .name' | head -1)
+            --jq '.[] | select(.tagName | startswith("${{ inputs.environment }}-")) | .tagName' | head -1)
           
           if [ -n "$PREVIOUS_RELEASE" ]; then
             echo "previous_release=${PREVIOUS_RELEASE}" >> $GITHUB_OUTPUT
