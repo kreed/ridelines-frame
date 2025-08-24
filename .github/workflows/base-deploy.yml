@@ -7,8 +7,8 @@ on:
         description: 'Target environment (dev/prod)'
         required: true
         type: string
-      release_name:
-        description: 'Name of staging release to deploy'
+      triggering_job_id:
+        description: 'ID of the job that triggered this workflow'
         required: true
         type: string
 
@@ -50,30 +50,40 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Download bundle version artifact
+        uses: dawidd6/action-download-artifact@v11
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          run_id: ${{ inputs.triggering_job_id }}
+          name: bundle-version
+
       - name: Get release information
         id: release
         run: |
-          # Get release details
-          RELEASE_INFO=$(gh release view "${{ inputs.release_name }}" --json body,assets)
-          
-          # Extract bundle version from release name (format: env-YYYYMMDD-hash)
-          BUNDLE_VERSION=$(echo "${{ inputs.release_name }}" | sed 's/^[^-]*-//')
+          # Get bundle version from artifact
+          BUNDLE_VERSION=$(jq -r '.bundle_version' bundle-version.json)
           echo "bundle_version=${BUNDLE_VERSION}" >> $GITHUB_OUTPUT
           
-          # Verify this is a staging release (prerelease)
-          IS_PRERELEASE=$(gh release view "${{ inputs.release_name }}" --json isPrerelease --jq '.isPrerelease')
+          # Build release name
+          RELEASE_NAME="${{ inputs.environment }}-${BUNDLE_VERSION}"
+          echo "release_name=${RELEASE_NAME}" >> $GITHUB_OUTPUT
+          
+          # Get release details and verify this is a staging release
+          RELEASE_INFO=$(gh release view "${RELEASE_NAME}" --json body,assets)
+          IS_PRERELEASE=$(gh release view "${RELEASE_NAME}" --json isPrerelease --jq '.isPrerelease')
           if [ "$IS_PRERELEASE" != "true" ]; then
-            echo "Error: Release ${{ inputs.release_name }} is not a staging release"
+            echo "Error: Release ${RELEASE_NAME} is not a staging release"
             exit 1
           fi
           
           echo "Bundle version: ${BUNDLE_VERSION}"
+          echo "Release name: ${RELEASE_NAME}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Download OpenTofu plan
         run: |
-          gh release download "${{ inputs.release_name }}" \
+          gh release download "${{ steps.release.outputs.release_name }}" \
             --pattern "opentofu-${{ inputs.environment }}.tfplan" \
             --dir .
         env:
@@ -134,12 +144,12 @@ jobs:
       - name: Update release to deployed
         run: |
           # Update release from prerelease to full release (deployed)
-          gh release edit "${{ inputs.release_name }}" \
+          gh release edit "${{ steps.release.outputs.release_name }}" \
             --prerelease=false \
             --latest=${{ inputs.environment == 'prod' }}
           
           # Update release notes to show deployed status
-          CURRENT_NOTES=$(gh release view "${{ inputs.release_name }}" --json body --jq '.body')
+          CURRENT_NOTES=$(gh release view "${{ steps.release.outputs.release_name }}" --json body --jq '.body')
           DEPLOYMENT_TIME=$(date -Iseconds)
           
           # Update status and add deployment info
@@ -151,7 +161,7 @@ jobs:
           - **Deployment workflow**: [Run #${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
           - **Deployed by**: @${{ github.actor }}"
           
-          gh release edit "${{ inputs.release_name }}" \
+          gh release edit "${{ steps.release.outputs.release_name }}" \
             --notes "$UPDATED_NOTES"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -176,6 +186,13 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Upload bundle version artifact for next workflow
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-version
+          path: bundle-version.json
+          retention-days: 1
+
       - name: Deployment summary
         run: |
           echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
@@ -183,4 +200,4 @@ jobs:
           echo "📦 Bundle: ${{ steps.release.outputs.bundle_version }}" >> $GITHUB_STEP_SUMMARY
           echo "🪣 S3 Bucket: ${{ steps.apply.outputs.website_bucket_name }}" >> $GITHUB_STEP_SUMMARY
           echo "🏷️ Tagged as: ${{ inputs.environment }}-current" >> $GITHUB_STEP_SUMMARY
-          echo "📋 Release: [${{ inputs.release_name }}](${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ inputs.release_name }})" >> $GITHUB_STEP_SUMMARY
+          echo "📋 Release: [${{ steps.release.outputs.release_name }}](${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ steps.release.outputs.release_name }})" >> $GITHUB_STEP_SUMMARY

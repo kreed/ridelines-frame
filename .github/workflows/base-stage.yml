@@ -51,37 +51,11 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Download bundle version artifact
-        uses: actions/github-script@v7
+        uses: dawidd6/action-download-artifact@v11
         with:
-          script: |
-            // List artifacts from the triggering workflow
-            const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              run_id: ${{ inputs.triggering_job_id }}
-            });
-            
-            // Find the bundle-version artifact
-            const bundleArtifact = artifacts.data.artifacts.find(artifact => artifact.name === 'bundle-version');
-            if (!bundleArtifact) {
-              core.setFailed('Bundle version artifact not found');
-              return;
-            }
-            
-            // Download the artifact
-            const download = await github.rest.actions.downloadArtifact({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              artifact_id: bundleArtifact.id,
-              archive_format: 'zip'
-            });
-            
-            // Save the artifact
-            const fs = require('fs');
-            fs.writeFileSync('bundle-version.zip', Buffer.from(download.data));
-            
-            // Extract the artifact
-            await exec.exec('unzip', ['bundle-version.zip']);
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          run_id: ${{ inputs.triggering_job_id }}
+          name: bundle-version
 
       - name: Get bundle version and metadata
         id: bundle
@@ -208,9 +182,16 @@ jobs:
           
           # Create the release as a prerelease (staging)
           gh release create "${RELEASE_NAME}" \
-            --title "${{ inputs.environment == 'prod' && 'Production' || 'Development' }} Staging: ${{ inputs.bundle_version }}" \
+            --title "${{ inputs.environment == 'prod' && 'Production' || 'Development' }} Staging: ${{ steps.bundle.outputs.bundle_version }}" \
             --notes-file release-description.md \
             --prerelease \
             opentofu-${{ inputs.environment }}.tfplan
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload bundle version artifact for next workflow
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-version
+          path: bundle-version.json
+          retention-days: 1

@@ -1,8 +1,9 @@
 name: Deploy to Development
 
 on:
-  release:
-    types: [published]
+  workflow_run:
+    workflows: ["Stage Development Release"]
+    types: [completed]
 
 permissions:
   contents: write
@@ -12,10 +13,9 @@ permissions:
 jobs:
   deploy:
     name: Deploy to Development
-    # Only trigger for dev staging releases (prereleases starting with "dev-")
-    if: github.event.release.prerelease == true && startsWith(github.event.release.name, 'dev-')
+    if: github.event.workflow_run.conclusion == 'success'
     uses: ./.github/workflows/base-deploy.yml
     with:
       environment: dev
-      release_name: ${{ github.event.release.name }}
+      triggering_job_id: ${{ github.event.workflow_run.id }}
     secrets: inherit
