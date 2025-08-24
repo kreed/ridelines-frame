@@ -1,0 +1,17 @@
+name: Test Production Trigger
+
+on:
+  workflow_run:
+    workflows: ["Stage Production Release"]
+    types: [completed]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Debug workflow_run trigger
+        run: |
+          echo "Prod stage workflow completed!"
+          echo "Conclusion: ${{ github.event.workflow_run.conclusion }}"
+          echo "Workflow ID: ${{ github.event.workflow_run.id }}"
+          echo "Workflow name: ${{ github.event.workflow_run.name }}"
