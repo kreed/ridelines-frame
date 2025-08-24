@@ -21,8 +21,6 @@ jobs:
   build-bundle:
     name: Build Deployment Bundle
     runs-on: ubuntu-latest
-    outputs:
-      bundle_version: ${{ steps.bundle.outputs.bundle_version }}
 
     steps:
       - name: Checkout frame repository
@@ -171,6 +169,30 @@ jobs:
             ridelines.commit.hub=${{ steps.commits.outputs.hub_commit }}
             ridelines.commit.drivetrain=${{ steps.commits.outputs.drivetrain_commit }}
             ridelines.commit.tippecanoe=${{ steps.commits.outputs.tippecanoe_commit }}
+
+      - name: Create bundle version artifact
+        run: |
+          mkdir -p bundle-info
+          cat > bundle-info/bundle-version.json << EOF
+          {
+            "bundle_version": "${{ steps.bundle.outputs.bundle_version }}",
+            "frame_commit": "${{ steps.commits.outputs.frame_commit }}",
+            "hub_commit": "${{ steps.commits.outputs.hub_commit }}",
+            "drivetrain_commit": "${{ steps.commits.outputs.drivetrain_commit }}",
+            "tippecanoe_commit": "${{ steps.commits.outputs.tippecanoe_commit }}",
+            "created_at": "$(date -Iseconds)"
+          }
+          EOF
+          
+          echo "Bundle version artifact created:"
+          cat bundle-info/bundle-version.json
+
+      - name: Upload bundle version artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-version
+          path: bundle-info/bundle-version.json
+          retention-days: 1
 
       - name: Bundle summary
         run: |

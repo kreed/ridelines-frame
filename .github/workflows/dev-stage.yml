@@ -1,7 +1,5 @@
 name: Stage Development Release
 
-run-name: Stage dev - ${{ github.event.workflow_run.outputs.bundle_version }}
-
 on:
   workflow_run:
     workflows: ["Build Deployment Bundle"]
