@@ -8,6 +8,12 @@ on:
       - '.gitignore'
       - 'LICENSE'
   workflow_dispatch:
+    inputs:
+      triggered_by:
+        description: 'Which component triggered this build'
+        required: false
+        type: string
+        default: 'manual'
 
 permissions:
   contents: read
