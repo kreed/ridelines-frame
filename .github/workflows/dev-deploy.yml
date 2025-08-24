@@ -1,9 +1,14 @@
 name: Deploy to Development
 
+run-name: Deploy dev - ${{ inputs.bundle_version }}
+
 on:
-  workflow_run:
-    workflows: ["Stage Development Release"]
-    types: [completed]
+  workflow_dispatch:
+    inputs:
+      bundle_version:
+        description: 'Bundle version to deploy'
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -13,9 +18,8 @@ permissions:
 jobs:
   deploy:
     name: Deploy to Development
-    if: github.event.workflow_run.conclusion == 'success'
     uses: ./.github/workflows/base-deploy.yml
     with:
       environment: dev
-      triggering_job_id: ${{ github.event.workflow_run.id }}
+      bundle_version: ${{ inputs.bundle_version }}
     secrets: inherit

@@ -7,8 +7,8 @@ on:
         description: 'Target environment (dev/prod)'
         required: true
         type: string
-      triggering_job_id:
-        description: 'ID of the job that triggered this workflow'
+      bundle_version:
+        description: 'Bundle version to stage'
         required: true
         type: string
 
@@ -50,40 +50,29 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Download bundle version artifact
-        uses: dawidd6/action-download-artifact@v11
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          run_id: ${{ inputs.triggering_job_id }}
-          name: bundle-version
-
       - name: Get bundle version and metadata
         id: bundle
         run: |
-          # Read bundle version from artifact
-          if [ ! -f "bundle-version.json" ]; then
-            echo "Error: bundle-version.json not found"
-            exit 1
-          fi
-          
-          # Extract values from JSON
-          BUNDLE_VERSION=$(jq -r '.bundle_version' bundle-version.json)
-          FRAME_COMMIT=$(jq -r '.frame_commit' bundle-version.json)
-          HUB_COMMIT=$(jq -r '.hub_commit' bundle-version.json)
-          DRIVETRAIN_COMMIT=$(jq -r '.drivetrain_commit' bundle-version.json)
-          TIPPECANOE_COMMIT=$(jq -r '.tippecanoe_commit' bundle-version.json)
-          
+          # Use bundle version from input
+          BUNDLE_VERSION="${{ inputs.bundle_version }}"
           echo "bundle_version=${BUNDLE_VERSION}" >> $GITHUB_OUTPUT
+          
+          # Pull the specific bundle version
+          docker pull ghcr.io/${{ env.BUNDLE_IMAGE }}:${BUNDLE_VERSION}
+          
+          # Extract metadata from container labels
+          FRAME_COMMIT=$(docker inspect ghcr.io/${{ env.BUNDLE_IMAGE }}:${BUNDLE_VERSION} | jq -r '.[0].Config.Labels["ridelines.commit.frame"]')
+          HUB_COMMIT=$(docker inspect ghcr.io/${{ env.BUNDLE_IMAGE }}:${BUNDLE_VERSION} | jq -r '.[0].Config.Labels["ridelines.commit.hub"]')
+          DRIVETRAIN_COMMIT=$(docker inspect ghcr.io/${{ env.BUNDLE_IMAGE }}:${BUNDLE_VERSION} | jq -r '.[0].Config.Labels["ridelines.commit.drivetrain"]')
+          TIPPECANOE_COMMIT=$(docker inspect ghcr.io/${{ env.BUNDLE_IMAGE }}:${BUNDLE_VERSION} | jq -r '.[0].Config.Labels["ridelines.commit.tippecanoe"]')
+          
           echo "frame_commit=${FRAME_COMMIT}" >> $GITHUB_OUTPUT
           echo "hub_commit=${HUB_COMMIT}" >> $GITHUB_OUTPUT
           echo "drivetrain_commit=${DRIVETRAIN_COMMIT}" >> $GITHUB_OUTPUT
           echo "tippecanoe_commit=${TIPPECANOE_COMMIT}" >> $GITHUB_OUTPUT
           
           echo "Bundle version: ${BUNDLE_VERSION}"
-          echo "Component commits loaded from artifact"
-          
-          # Pull the specific bundle version
-          docker pull ghcr.io/${{ env.BUNDLE_IMAGE }}:${BUNDLE_VERSION}
+          echo "Component commits loaded from container labels"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -189,9 +178,18 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload bundle version artifact for next workflow
-        uses: actions/upload-artifact@v4
+      - name: Trigger deployment workflow
+        uses: actions/github-script@v7
         with:
-          name: bundle-version
-          path: bundle-version.json
-          retention-days: 1
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: '${{ inputs.environment == 'dev' && 'dev-deploy.yml' || 'prod-deploy.yml' }}',
+              ref: context.ref,
+              inputs: {
+                bundle_version: '${{ steps.bundle.outputs.bundle_version }}'
+              }
+            });
+            console.log('${{ inputs.environment }} deployment triggered with bundle version: ${{ steps.bundle.outputs.bundle_version }}');

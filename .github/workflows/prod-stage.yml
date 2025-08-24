@@ -1,9 +1,14 @@
 name: Stage Production Release
 
+run-name: Stage prod - ${{ inputs.bundle_version }}
+
 on:
-  workflow_run:
-    workflows: ["Deploy to Development"]
-    types: [completed]
+  workflow_dispatch:
+    inputs:
+      bundle_version:
+        description: 'Bundle version to stage for production'
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -13,9 +18,8 @@ permissions:
 jobs:
   stage:
     name: Stage Production Release
-    if: github.event.workflow_run.conclusion == 'success'
     uses: ./.github/workflows/base-stage.yml
     with:
       environment: prod
-      triggering_job_id: ${{ github.event.workflow_run.id }}
+      bundle_version: ${{ inputs.bundle_version }}
     secrets: inherit

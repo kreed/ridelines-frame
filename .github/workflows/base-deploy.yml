@@ -7,8 +7,8 @@ on:
         description: 'Target environment (dev/prod)'
         required: true
         type: string
-      triggering_job_id:
-        description: 'ID of the job that triggered this workflow'
+      bundle_version:
+        description: 'Bundle version to deploy'
         required: true
         type: string
 
@@ -50,18 +50,11 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Download bundle version artifact
-        uses: dawidd6/action-download-artifact@v11
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          run_id: ${{ inputs.triggering_job_id }}
-          name: bundle-version
-
       - name: Get release information
         id: release
         run: |
-          # Get bundle version from artifact
-          BUNDLE_VERSION=$(jq -r '.bundle_version' bundle-version.json)
+          # Use bundle version from input
+          BUNDLE_VERSION="${{ inputs.bundle_version }}"
           echo "bundle_version=${BUNDLE_VERSION}" >> $GITHUB_OUTPUT
           
           # Build release name
@@ -186,12 +179,22 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload bundle version artifact for next workflow
-        uses: actions/upload-artifact@v4
+      - name: Trigger prod staging
+        if: inputs.environment == 'dev'
+        uses: actions/github-script@v7
         with:
-          name: bundle-version
-          path: bundle-version.json
-          retention-days: 1
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'prod-stage.yml',
+              ref: context.ref,
+              inputs: {
+                bundle_version: '${{ inputs.bundle_version }}'
+              }
+            });
+            console.log('Production staging triggered with bundle version: ${{ inputs.bundle_version }}');
 
       - name: Deployment summary
         run: |
@@ -201,3 +204,6 @@ jobs:
           echo "🪣 S3 Bucket: ${{ steps.apply.outputs.website_bucket_name }}" >> $GITHUB_STEP_SUMMARY
           echo "🏷️ Tagged as: ${{ inputs.environment }}-current" >> $GITHUB_STEP_SUMMARY
           echo "📋 Release: [${{ steps.release.outputs.release_name }}](${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ steps.release.outputs.release_name }})" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ inputs.environment }}" == "dev" ]; then
+            echo "🚀 Production staging triggered" >> $GITHUB_STEP_SUMMARY
+          fi

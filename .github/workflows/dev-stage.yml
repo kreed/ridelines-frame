@@ -1,9 +1,14 @@
 name: Stage Development Release
 
+run-name: Stage dev - ${{ inputs.bundle_version }}
+
 on:
-  workflow_run:
-    workflows: ["Build Deployment Bundle"]
-    types: [completed]
+  workflow_dispatch:
+    inputs:
+      bundle_version:
+        description: 'Bundle version to stage for development'
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -11,11 +16,10 @@ permissions:
   id-token: write
 
 jobs:
-  call-stage:
-    name: Call Base Stage Workflow
-    if: github.event.workflow_run.conclusion == 'success'
+  stage:
+    name: Stage Development Release
     uses: ./.github/workflows/base-stage.yml
     with:
       environment: dev
-      triggering_job_id: ${{ github.event.workflow_run.id }}
+      bundle_version: ${{ inputs.bundle_version }}
     secrets: inherit
