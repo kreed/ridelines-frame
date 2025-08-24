@@ -140,11 +140,11 @@ jobs:
           # Update status and add deployment info
           UPDATED_NOTES=$(echo "$CURRENT_NOTES" | sed 's/### Status: 🟡 Staging/### Status: ✅ Deployed/')
           UPDATED_NOTES="${UPDATED_NOTES}
-
-### Deployment Information
-- **Deployed at**: ${DEPLOYMENT_TIME}
-- **Deployment workflow**: [Run #${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
-- **Deployed by**: @${{ github.actor }}"
+          
+          ### Deployment Information
+          - **Deployed at**: ${DEPLOYMENT_TIME}
+          - **Deployment workflow**: [Run #${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          - **Deployed by**: @${{ github.actor }}"
           
           gh release edit "${{ inputs.release_name }}" \
             --notes "$UPDATED_NOTES"
