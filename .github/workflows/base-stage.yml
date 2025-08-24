@@ -98,6 +98,35 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Get previous bundle commits
+        id: previous_commits
+        if: steps.previous.outputs.previous_found == 'true'
+        run: |
+          # Get previous bundle version and extract commit info
+          PREV_BUNDLE_VERSION=$(echo "${{ steps.previous.outputs.previous_release }}" | sed 's/^[^-]*-//')
+          echo "prev_bundle_version=${PREV_BUNDLE_VERSION}" >> $GITHUB_OUTPUT
+          
+          # Pull previous bundle image
+          docker pull ghcr.io/${{ env.BUNDLE_IMAGE }}:${PREV_BUNDLE_VERSION} || true
+          
+          if docker image inspect ghcr.io/${{ env.BUNDLE_IMAGE }}:${PREV_BUNDLE_VERSION} > /dev/null 2>&1; then
+            PREV_FRAME_COMMIT=$(docker inspect ghcr.io/${{ env.BUNDLE_IMAGE }}:${PREV_BUNDLE_VERSION} | jq -r '.[0].Config.Labels["ridelines.commit.frame"] // "unknown"')
+            PREV_HUB_COMMIT=$(docker inspect ghcr.io/${{ env.BUNDLE_IMAGE }}:${PREV_BUNDLE_VERSION} | jq -r '.[0].Config.Labels["ridelines.commit.hub"] // "unknown"')
+            PREV_DRIVETRAIN_COMMIT=$(docker inspect ghcr.io/${{ env.BUNDLE_IMAGE }}:${PREV_BUNDLE_VERSION} | jq -r '.[0].Config.Labels["ridelines.commit.drivetrain"] // "unknown"')
+            PREV_TIPPECANOE_COMMIT=$(docker inspect ghcr.io/${{ env.BUNDLE_IMAGE }}:${PREV_BUNDLE_VERSION} | jq -r '.[0].Config.Labels["ridelines.commit.tippecanoe"] // "unknown"')
+            
+            echo "prev_frame_commit=${PREV_FRAME_COMMIT}" >> $GITHUB_OUTPUT
+            echo "prev_hub_commit=${PREV_HUB_COMMIT}" >> $GITHUB_OUTPUT  
+            echo "prev_drivetrain_commit=${PREV_DRIVETRAIN_COMMIT}" >> $GITHUB_OUTPUT
+            echo "prev_tippecanoe_commit=${PREV_TIPPECANOE_COMMIT}" >> $GITHUB_OUTPUT
+            echo "commits_available=true" >> $GITHUB_OUTPUT
+            
+            echo "Previous commits extracted successfully"
+          else
+            echo "commits_available=false" >> $GITHUB_OUTPUT
+            echo "Previous bundle image not available"
+          fi
+
       - name: Generate OpenTofu plan
         run: |
           # Extract bundle to get OpenTofu files and artifacts
@@ -139,8 +168,47 @@ jobs:
             cat >> release-description.md << 'EOF'
           Previous deployment: [${{ steps.previous.outputs.previous_release }}](https://github.com/kreed/ridelines-frame/releases/tag/${{ steps.previous.outputs.previous_release }})
 
-          🔄 **Note**: Detailed commit comparisons will be implemented in next iteration
           EOF
+            
+            if [ "${{ steps.previous_commits.outputs.commits_available }}" = "true" ]; then
+              cat >> release-description.md << 'EOF'
+          #### Component Changes:
+          EOF
+              
+              # Add diff links for each component (or "No changes" if commits are identical)
+              
+              # Frame
+              if [ "${{ steps.previous_commits.outputs.prev_frame_commit }}" = "${{ steps.bundle.outputs.frame_commit }}" ]; then
+                echo "- **Frame**: No changes" >> release-description.md
+              else
+                echo "- **Frame**: [\`$(echo ${{ steps.previous_commits.outputs.prev_frame_commit }} | cut -c1-7)..$(echo ${{ steps.bundle.outputs.frame_commit }} | cut -c1-7)\`](https://github.com/kreed/ridelines-frame/compare/${{ steps.previous_commits.outputs.prev_frame_commit }}..${{ steps.bundle.outputs.frame_commit }})" >> release-description.md
+              fi
+              
+              # Hub  
+              if [ "${{ steps.previous_commits.outputs.prev_hub_commit }}" = "${{ steps.bundle.outputs.hub_commit }}" ]; then
+                echo "- **Hub**: No changes" >> release-description.md
+              else
+                echo "- **Hub**: [\`$(echo ${{ steps.previous_commits.outputs.prev_hub_commit }} | cut -c1-7)..$(echo ${{ steps.bundle.outputs.hub_commit }} | cut -c1-7)\`](https://github.com/kreed/ridelines-hub/compare/${{ steps.previous_commits.outputs.prev_hub_commit }}..${{ steps.bundle.outputs.hub_commit }})" >> release-description.md
+              fi
+              
+              # Drivetrain
+              if [ "${{ steps.previous_commits.outputs.prev_drivetrain_commit }}" = "${{ steps.bundle.outputs.drivetrain_commit }}" ]; then
+                echo "- **Drivetrain**: No changes" >> release-description.md
+              else
+                echo "- **Drivetrain**: [\`$(echo ${{ steps.previous_commits.outputs.prev_drivetrain_commit }} | cut -c1-7)..$(echo ${{ steps.bundle.outputs.drivetrain_commit }} | cut -c1-7)\`](https://github.com/kreed/ridelines-drivetrain/compare/${{ steps.previous_commits.outputs.prev_drivetrain_commit }}..${{ steps.bundle.outputs.drivetrain_commit }})" >> release-description.md
+              fi
+              
+              # Tippecanoe
+              if [ "${{ steps.previous_commits.outputs.prev_tippecanoe_commit }}" = "${{ steps.bundle.outputs.tippecanoe_commit }}" ]; then
+                echo "- **Tippecanoe**: No changes" >> release-description.md
+              else  
+                echo "- **Tippecanoe**: [\`$(echo ${{ steps.previous_commits.outputs.prev_tippecanoe_commit }} | cut -c1-7)..$(echo ${{ steps.bundle.outputs.tippecanoe_commit }} | cut -c1-7)\`](https://github.com/felt/tippecanoe/compare/${{ steps.previous_commits.outputs.prev_tippecanoe_commit }}..${{ steps.bundle.outputs.tippecanoe_commit }})" >> release-description.md
+              fi
+            else
+              cat >> release-description.md << 'EOF'
+          Previous bundle image not available for detailed comparison.
+          EOF
+            fi
           else
             cat >> release-description.md << 'EOF'
           🆕 **First ${{ inputs.environment }} deployment** - no previous release to compare
