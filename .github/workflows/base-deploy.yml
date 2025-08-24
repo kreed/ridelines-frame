@@ -31,6 +31,11 @@ jobs:
       - name: Checkout frame repository
         uses: actions/checkout@v5
 
+      - name: Setup OpenTofu
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: 1.8.6
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -66,10 +71,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Download terraform plan
+      - name: Download OpenTofu plan
         run: |
           gh release download "${{ inputs.release_name }}" \
-            --pattern "terraform-${{ inputs.environment }}.tfplan" \
+            --pattern "opentofu-${{ inputs.environment }}.tfplan" \
             --dir .
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -99,14 +104,14 @@ jobs:
           
           echo "✅ Bundle version validated"
 
-      - name: Apply terraform plan
+      - name: Apply OpenTofu plan
         id: apply
         run: |
           cd deployment/terraform/environments/${{ inputs.environment }}
           tofu init
           
-          # Apply the exact plan that was reviewed
-          tofu apply ../../../../../terraform-${{ inputs.environment }}.tfplan
+          # Apply the exact OpenTofu plan that was reviewed
+          tofu apply -auto-approve ../../../../../opentofu-${{ inputs.environment }}.tfplan
           
           # Get outputs
           WEBSITE_BUCKET=$(tofu output -raw website_bucket_name)

@@ -33,6 +33,11 @@ jobs:
       - name: Checkout frame repository
         uses: actions/checkout@v5
 
+      - name: Setup OpenTofu
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: 1.8.6
+
       - name: Log in to Container Registry
         uses: docker/login-action@v3
         with:
@@ -78,21 +83,21 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Generate terraform plan
+      - name: Generate OpenTofu plan
         run: |
-          # Extract bundle to get terraform files
+          # Extract bundle to get OpenTofu files
           docker create --name bundle-extract ghcr.io/${{ env.BUNDLE_IMAGE }}:${{ inputs.bundle_version }} /bin/sh
-          docker cp bundle-extract:/deployment/terraform/ ./terraform-staging/
+          docker cp bundle-extract:/deployment/terraform/ ./opentofu-staging/
           docker rm bundle-extract
           
           # Generate plan for specified environment
-          cd terraform-staging/environments/${{ inputs.environment }}
+          cd opentofu-staging/environments/${{ inputs.environment }}
           tofu init
           tofu plan -out=plan.tfplan -var-file=terraform.tfvars
-          tofu show plan.tfplan > ../../../terraform-plan.txt
+          tofu show plan.tfplan > ../../../opentofu-plan.txt
           
           # Move plan file to workspace root for upload
-          mv plan.tfplan ../../../terraform-${{ inputs.environment }}.tfplan
+          mv plan.tfplan ../../../opentofu-${{ inputs.environment }}.tfplan
 
       - name: Create prerelease
         run: |
@@ -129,14 +134,14 @@ jobs:
           
           cat >> release-description.md << 'EOF'
 
-          ### Terraform Plan
+          ### OpenTofu Plan
           <details>
           <summary>Click to expand plan</summary>
 
           ```hcl
           EOF
           
-          cat terraform-plan.txt >> release-description.md
+          cat opentofu-plan.txt >> release-description.md
           
           cat >> release-description.md << 'EOF'
           ```
@@ -156,6 +161,6 @@ jobs:
             --title "${{ inputs.environment == 'prod' && 'Production' || 'Development' }} Staging: ${{ inputs.bundle_version }}" \
             --notes-file release-description.md \
             --prerelease \
-            terraform-${{ inputs.environment }}.tfplan
+            opentofu-${{ inputs.environment }}.tfplan
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

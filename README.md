@@ -26,10 +26,10 @@ flowchart LR
     
     BUILD --> BUNDLE[Deployment Bundle<br/>YYYYMMDD-hash]
     
-    BUNDLE --> DEV_STAGE[Dev Staging<br/>terraform plan]
+    BUNDLE --> DEV_STAGE[Dev Staging<br/>OpenTofu plan]
     DEV_STAGE --> DEV_DEPLOY[Dev Deploy<br/>auto]
     
-    DEV_DEPLOY -.->|if successful| PROD_STAGE[Prod Staging<br/>terraform plan]
+    DEV_DEPLOY -.->|if successful| PROD_STAGE[Prod Staging<br/>OpenTofu plan]
     PROD_STAGE --> APPROVE{Manual<br/>Approval?}
     APPROVE -->|Yes| PROD_DEPLOY[Prod Deploy]
     APPROVE -.->|No| PROD_STAGE
@@ -39,9 +39,9 @@ flowchart LR
 
 1. **Component Updates**: When Hub, Drivetrain, or Tippecanoe repositories publish new containers
 2. **Bundle Build**: Automatically combines all artifacts into an immutable deployment bundle
-3. **Dev Staging**: Creates a prerelease with terraform plan for development environment
+3. **Dev Staging**: Creates a prerelease with OpenTofu plan for development environment
 4. **Dev Deploy**: Automatically deploys the staged release to development
-5. **Prod Staging**: If dev deployment succeeds, creates a prerelease with terraform plan for production
+5. **Prod Staging**: If dev deployment succeeds, creates a prerelease with OpenTofu plan for production
 6. **Manual Approval**: Human review of the production prerelease is required
 7. **Prod Deploy**: Upon approval, deploys the same bundle to production environment
 
