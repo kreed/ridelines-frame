@@ -1,5 +1,7 @@
 name: Build Deployment Bundle
 
+run-name: Build bundle - ${{ steps.bundle.outputs.bundle_version || 'generating version' }}
+
 on:
   push:
     branches: [main]

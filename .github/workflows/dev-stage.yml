@@ -29,9 +29,12 @@ jobs:
       - name: Get bundle version
         id: bundle
         run: |
-          # Pull the latest bundle and get the version from container label
-          docker pull ghcr.io/kreed/ridelines-bundle:latest
-          BUNDLE_VERSION=$(docker inspect ghcr.io/kreed/ridelines-bundle:latest | jq -r '.[0].Config.Labels["ridelines.bundle.version"]')
+          # Extract bundle version from the triggering workflow's display title
+          DISPLAY_TITLE="${{ github.event.workflow_run.display_title }}"
+          echo "Display title: ${DISPLAY_TITLE}"
+          
+          # Extract version from "Build bundle - YYYYMMDD-hash" format
+          BUNDLE_VERSION=$(echo "${DISPLAY_TITLE}" | sed 's/Build bundle - //')
           echo "bundle_version=${BUNDLE_VERSION}" >> $GITHUB_OUTPUT
           echo "Bundle version: ${BUNDLE_VERSION}"
 
