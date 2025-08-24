@@ -20,30 +20,25 @@ Ridelines Frame is the deployment orchestration component that manages the entir
 
 ```mermaid
 flowchart LR
-    HUB[Hub Repository] --> BUILD[Build Bundle]
-    DRIVE[Drivetrain Repository] --> BUILD
-    TIP[Tippecanoe Layer] --> BUILD
+    HUB[Hub Build Workflow] -.-> BUILD[Build Bundle]
+    FRAME[Frame Commit] --> BUILD
+    DRIVE[Drivetrain Build Workflow] -.-> BUILD
+
+    BUILD --> DEV_STAGE[Dev Staging]
+    DEV_STAGE --> DEV_DEPLOY[Dev Deploy]
     
-    BUILD --> BUNDLE[Deployment Bundle<br/>YYYYMMDD-hash]
-    
-    BUNDLE --> DEV_STAGE[Dev Staging<br/>OpenTofu plan]
-    DEV_STAGE --> DEV_DEPLOY[Dev Deploy<br/>auto]
-    
-    DEV_DEPLOY -.->|if successful| PROD_STAGE[Prod Staging<br/>OpenTofu plan]
-    PROD_STAGE --> APPROVE{Manual<br/>Approval?}
-    APPROVE -->|Yes| PROD_DEPLOY[Prod Deploy]
-    APPROVE -.->|No| PROD_STAGE
+    DEV_DEPLOY --> PROD_STAGE[Prod Staging]
+    PROD_STAGE -->|⏸️ manual approval| PROD_DEPLOY[Prod Deploy]
 ```
 
 ### Deployment Flow
 
-1. **Component Updates**: When Hub, Drivetrain, or Tippecanoe repositories publish new containers
-2. **Bundle Build**: Automatically combines all artifacts into an immutable deployment bundle
-3. **Dev Staging**: Creates a prerelease with OpenTofu plan for development environment
-4. **Dev Deploy**: Automatically deploys the staged release to development
-5. **Prod Staging**: If dev deployment succeeds, creates a prerelease with OpenTofu plan for production
-6. **Manual Approval**: Human review of the production prerelease is required
-7. **Prod Deploy**: Upon approval, deploys the same bundle to production environment
+1. **Component Updates**: Hub/Drivetrain build workflows or Frame repository commits trigger bundle build
+2. **Build Bundle** ([`build-bundle.yml`](.github/workflows/build-bundle.yml)): Combines all artifacts into an immutable deployment bundle
+3. **Dev Staging** ([`dev-stage.yml`](.github/workflows/dev-stage.yml)): Creates a prerelease with OpenTofu plan for development environment
+4. **Dev Deploy** ([`dev-deploy.yml`](.github/workflows/dev-deploy.yml)): Automatically deploys the staged release to development
+5. **Prod Staging** ([`prod-stage.yml`](.github/workflows/prod-stage.yml)): Creates a prerelease with OpenTofu plan for production
+6. **Prod Deploy** ([`prod-deploy.yml`](.github/workflows/prod-deploy.yml)): Upon manual approval, deploys to production environment
 
 ## Technology Stack
 
@@ -71,8 +66,10 @@ frame/
 │   └── prod/                 # Production environment
 └── modules/                  # Reusable infrastructure modules
     ├── website/              # Static website hosting
-    ├── drivetrain-lambda/    # Lambda function infrastructure
-    ├── athlete-state/        # User data storage
+    ├── drivetrain-auth/      # OAuth authentication infrastructure
+    ├── drivetrain-sync/      # Activity sync Lambda and GeoJSON storage
+    ├── drivetrain-users/     # User management Lambda and DynamoDB
+    ├── github-actions-iam/   # GitHub Actions OIDC permissions
     └── dns/                  # Domain and certificates
 ```
 
