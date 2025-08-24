@@ -1,33 +1,35 @@
 name: Stage Development Release
 
 on:
-  registry_package:
-    types: [published]
+  workflow_run:
+    workflows: ["Build Deployment Bundle"]
+    types: [completed]
 
 permissions:
   contents: write
   packages: read
 
 jobs:
-  debug:
-    name: Debug Registry Package Event
-    runs-on: ubuntu-latest
-    steps:
-      - name: Debug package event
-        run: |
-          echo "Package type: ${{ github.event.registry_package.package_type }}"
-          echo "Package name: ${{ github.event.registry_package.name }}"
-          echo "Package version: ${{ github.event.registry_package.package_version.name }}"
-          echo "Full event:"
-          echo '${{ toJSON(github.event) }}'
-
   stage:
     name: Stage Development Release
-    needs: debug
-    if: github.event.registry_package.package_type == 'container' && github.event.registry_package.name == 'ridelines-bundle'
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Get bundle version
+        id: bundle
+        run: |
+          # Get the bundle version from the latest container label
+          BUNDLE_VERSION=$(docker inspect ghcr.io/kreed/ridelines-bundle:latest | jq -r '.[0].Config.Labels["ridelines.bundle.version"]')
+          echo "bundle_version=${BUNDLE_VERSION}" >> $GITHUB_OUTPUT
+          echo "Bundle version: ${BUNDLE_VERSION}"
+
+  call-stage:
+    name: Call Base Stage Workflow
+    needs: stage
     uses: ./.github/workflows/base-stage.yml
     with:
       environment: dev
-      bundle_version: ${{ github.event.registry_package.package_version.name }}
+      bundle_version: ${{ needs.stage.outputs.bundle_version }}
       trigger_type: new_bundle
     secrets: inherit
