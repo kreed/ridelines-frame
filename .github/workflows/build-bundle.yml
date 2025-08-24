@@ -1,7 +1,5 @@
 name: Build Deployment Bundle
 
-run-name: Build bundle - ${{ steps.bundle.outputs.bundle_version || 'generating version' }}
-
 on:
   push:
     branches: [main]
@@ -23,6 +21,8 @@ jobs:
   build-bundle:
     name: Build Deployment Bundle
     runs-on: ubuntu-latest
+    outputs:
+      bundle_version: ${{ steps.bundle.outputs.bundle_version }}
 
     steps:
       - name: Checkout frame repository
@@ -94,6 +94,9 @@ jobs:
           
           echo "bundle_version=${BUNDLE_VERSION}" >> $GITHUB_OUTPUT
           echo "Bundle version: ${BUNDLE_VERSION}"
+          
+          # Set workflow title to include bundle version
+          echo "::notice title=Bundle Version::${BUNDLE_VERSION}"
 
       - name: Create bundle Dockerfile
         run: |
