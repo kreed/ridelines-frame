@@ -19,6 +19,7 @@ on:
 permissions:
   contents: write
   packages: read
+  id-token: write
 
 env:
   REGISTRY: ghcr.io
