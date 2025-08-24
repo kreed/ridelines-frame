@@ -60,13 +60,12 @@ flowchart LR
 frame/
 ├── .github/workflows/          # Deployment automation
 │   ├── build-bundle.yml       # Creates deployment bundles
+│   ├── base-stage.yml         # Reusable staging workflow
+│   ├── base-deploy.yml        # Reusable deployment workflow
 │   ├── dev-stage.yml          # Dev staging trigger
 │   ├── dev-deploy.yml         # Dev deployment trigger
 │   ├── prod-stage.yml         # Prod staging trigger
-│   ├── prod-deploy.yml        # Prod deployment trigger
-│   └── shared/                # Reusable workflows
-│       ├── base-stage.yml     # Reusable staging workflow
-│       └── base-deploy.yml    # Reusable deployment workflow
+│   └── prod-deploy.yml        # Prod deployment trigger
 ├── environments/              # Environment configurations
 │   ├── dev/                  # Development environment
 │   └── prod/                 # Production environment
