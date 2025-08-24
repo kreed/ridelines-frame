@@ -94,19 +94,19 @@ jobs:
 
       - name: Generate OpenTofu plan
         run: |
-          # Extract bundle to get OpenTofu files
+          # Extract bundle to get OpenTofu files and artifacts
           docker create --name bundle-extract ghcr.io/${{ env.BUNDLE_IMAGE }}:${{ inputs.bundle_version }} /bin/sh
-          docker cp bundle-extract:/deployment/terraform/ ./opentofu-staging/
+          docker cp bundle-extract:/deployment/ ./staging/
           docker rm bundle-extract
           
           # Generate plan for specified environment
-          cd opentofu-staging/environments/${{ inputs.environment }}
+          cd staging/terraform/environments/${{ inputs.environment }}
           tofu init
           tofu plan -out=plan.tfplan -var-file=terraform.tfvars
-          tofu show plan.tfplan > ../../../opentofu-plan.txt
+          tofu show plan.tfplan > ../../../../opentofu-plan.txt
           
           # Move plan file to workspace root for upload
-          mv plan.tfplan ../../../opentofu-${{ inputs.environment }}.tfplan
+          mv plan.tfplan ../../../../opentofu-${{ inputs.environment }}.tfplan
 
       - name: Create prerelease
         run: |
