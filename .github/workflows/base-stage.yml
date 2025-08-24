@@ -38,6 +38,13 @@ jobs:
         with:
           tofu_version: 1.10.5
 
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          role-session-name: ${{ github.run_id }}
+
       - name: Log in to Container Registry
         uses: docker/login-action@v3
         with:
