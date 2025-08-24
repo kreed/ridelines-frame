@@ -119,10 +119,10 @@ jobs:
           cd staging/terraform/environments/${{ inputs.environment }}
           tofu init
           tofu plan -out=plan.tfplan -var-file=terraform.tfvars
-          tofu show -no-color plan.tfplan > ../../../../opentofu-plan.txt
+          tofu show -no-color plan.tfplan > $GITHUB_WORKSPACE/opentofu-plan.txt
           
           # Move plan file to workspace root for upload
-          mv plan.tfplan ../../../../opentofu-${{ inputs.environment }}.tfplan
+          mv plan.tfplan $GITHUB_WORKSPACE/opentofu-${{ inputs.environment }}.tfplan
 
       - name: Create prerelease
         run: |
