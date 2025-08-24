@@ -19,6 +19,5 @@ jobs:
     uses: ./.github/workflows/base-stage.yml
     with:
       environment: dev
-      bundle_version: ${{ github.event.workflow_run.outputs.bundle_version }}
-      trigger_type: new_bundle
+      triggering_job_id: ${{ github.event.workflow_run.id }}
     secrets: inherit

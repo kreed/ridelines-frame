@@ -7,12 +7,8 @@ on:
         description: 'Target environment (dev/prod)'
         required: true
         type: string
-      bundle_version:
-        description: 'Bundle version to create release for'
-        required: true
-        type: string
-      trigger_type:
-        description: 'What triggered this (new_bundle/dev_deployed)'
+      triggering_job_id:
+        description: 'ID of the job that triggered this workflow'
         required: true
         type: string
 
@@ -54,22 +50,36 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Get bundle metadata
+      - name: Get bundle version and metadata
         id: bundle
         run: |
+          # Get bundle version from triggering workflow outputs using GitHub API
+          BUNDLE_VERSION=$(gh api repos/${{ github.repository }}/actions/runs/${{ inputs.triggering_job_id }} \
+            --jq '.outputs.bundle_version // empty')
+          
+          if [ -z "$BUNDLE_VERSION" ]; then
+            echo "Error: Could not get bundle version from triggering workflow"
+            exit 1
+          fi
+          
+          echo "bundle_version=${BUNDLE_VERSION}" >> $GITHUB_OUTPUT
+          echo "Bundle version: ${BUNDLE_VERSION}"
+          
           # Pull the specific bundle version
-          docker pull ghcr.io/${{ env.BUNDLE_IMAGE }}:${{ inputs.bundle_version }}
+          docker pull ghcr.io/${{ env.BUNDLE_IMAGE }}:${BUNDLE_VERSION}
           
           # Extract metadata from container labels
-          FRAME_COMMIT=$(docker inspect ghcr.io/${{ env.BUNDLE_IMAGE }}:${{ inputs.bundle_version }} | jq -r '.[0].Config.Labels["ridelines.commit.frame"]')
-          HUB_COMMIT=$(docker inspect ghcr.io/${{ env.BUNDLE_IMAGE }}:${{ inputs.bundle_version }} | jq -r '.[0].Config.Labels["ridelines.commit.hub"]')
-          DRIVETRAIN_COMMIT=$(docker inspect ghcr.io/${{ env.BUNDLE_IMAGE }}:${{ inputs.bundle_version }} | jq -r '.[0].Config.Labels["ridelines.commit.drivetrain"]')
-          TIPPECANOE_COMMIT=$(docker inspect ghcr.io/${{ env.BUNDLE_IMAGE }}:${{ inputs.bundle_version }} | jq -r '.[0].Config.Labels["ridelines.commit.tippecanoe"]')
+          FRAME_COMMIT=$(docker inspect ghcr.io/${{ env.BUNDLE_IMAGE }}:${BUNDLE_VERSION} | jq -r '.[0].Config.Labels["ridelines.commit.frame"]')
+          HUB_COMMIT=$(docker inspect ghcr.io/${{ env.BUNDLE_IMAGE }}:${BUNDLE_VERSION} | jq -r '.[0].Config.Labels["ridelines.commit.hub"]')
+          DRIVETRAIN_COMMIT=$(docker inspect ghcr.io/${{ env.BUNDLE_IMAGE }}:${BUNDLE_VERSION} | jq -r '.[0].Config.Labels["ridelines.commit.drivetrain"]')
+          TIPPECANOE_COMMIT=$(docker inspect ghcr.io/${{ env.BUNDLE_IMAGE }}:${BUNDLE_VERSION} | jq -r '.[0].Config.Labels["ridelines.commit.tippecanoe"]')
           
           echo "frame_commit=${FRAME_COMMIT}" >> $GITHUB_OUTPUT
           echo "hub_commit=${HUB_COMMIT}" >> $GITHUB_OUTPUT
           echo "drivetrain_commit=${DRIVETRAIN_COMMIT}" >> $GITHUB_OUTPUT
           echo "tippecanoe_commit=${TIPPECANOE_COMMIT}" >> $GITHUB_OUTPUT
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }
 
       - name: Get previous deployed release
         id: previous
@@ -158,7 +168,6 @@ jobs:
 
           ### Deployment Details
           - Bundle: `ghcr.io/${{ env.BUNDLE_IMAGE }}:${{ inputs.bundle_version }}`
-          - Triggered by: ${{ inputs.trigger_type }}
           - [Workflow Run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
 
           ### Next Steps
