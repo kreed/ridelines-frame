@@ -1,127 +1,149 @@
 # Ridelines Frame
 
-The infrastructure orchestration layer that powers the Ridelines GPS activity visualization ecosystem. Frame provides centralized infrastructure management, package deployment, and environment orchestration using Infrastructure as Code principles.
+The infrastructure orchestration layer that powers the Ridelines GPS activity visualization ecosystem. Frame provides centralized infrastructure management, deterministic deployments, and environment orchestration using Infrastructure as Code principles.
 
 ## Overview
 
-Ridelines Frame is the foundational component that ties together the entire Ridelines ecosystem. It manages the deployment of frontend and backend components from GitHub Container Registry packages, provides environment separation (dev/prod), and handles all AWS infrastructure provisioning using OpenTofu/Terraform.
+Ridelines Frame is the deployment orchestration component that manages the entire Ridelines ecosystem. It creates immutable deployment bundles containing all artifacts and infrastructure code, implements a staging/production promotion workflow, and handles AWS infrastructure provisioning using OpenTofu/Terraform.
 
 ### Key Features
 
-- **🏗️ Infrastructure as Code**: Complete AWS infrastructure using OpenTofu/Terraform
-- **📦 Package Management**: Automated deployment from GitHub Container Registry
-- **🔄 Version Control**: Centralized version tracking with automated updates
-- **🌍 Multi-Environment**: Separated dev and prod environments with different policies
-- **⚡ Automated Deployment**: GitHub Actions integration for CI/CD
-- **🔒 Security-First**: IAM roles, OIDC authentication, and principle of least privilege
-- **📊 Observability**: CloudWatch integration and infrastructure monitoring
+- **📦 Deployment Bundles**: Immutable containers with all artifacts and infrastructure
+- **🔄 Deterministic Deployments**: Same bundle promoted from dev → prod
+- **🎯 Staging Workflow**: Review terraform plans before deployment
+- **🌍 Multi-Environment**: Separated dev and prod with promotion path
+- **⚡ Automated Pipeline**: GitHub Actions with manual production approval
+- **🔒 Security-First**: IAM roles, OIDC authentication, and least privilege
+- **📊 Full Traceability**: Track exact commits deployed to each environment
 
-## Architecture
+## Deployment Sequence
 
+```mermaid
+flowchart LR
+    HUB[Hub Repository] --> BUILD[Build Bundle]
+    DRIVE[Drivetrain Repository] --> BUILD
+    TIP[Tippecanoe Layer] --> BUILD
+    
+    BUILD --> BUNDLE[Deployment Bundle<br/>YYYYMMDD-hash]
+    
+    BUNDLE --> DEV_STAGE[Dev Staging<br/>terraform plan]
+    DEV_STAGE --> DEV_DEPLOY[Dev Deploy<br/>auto]
+    
+    DEV_DEPLOY -.->|if successful| PROD_STAGE[Prod Staging<br/>terraform plan]
+    PROD_STAGE --> APPROVE{Manual<br/>Approval?}
+    APPROVE -->|Yes| PROD_DEPLOY[Prod Deploy]
+    APPROVE -.->|No| PROD_STAGE
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                        Ridelines Frame                         │
-├─────────────────┬───────────────────┬───────────────────────────┤
-│   Development   │    Production     │       Components          │
-│   Environment   │   Environment     │                           │
-├─────────────────┼───────────────────┼───────────────────────────┤
-│ ┌─────────────┐ │ ┌─────────────┐   │ ┌─────────────────────────┐ │
-│ │ Auto-Deploy │ │ │Manual Deploy│   │ │      Hub Package        │ │
-│ │ Latest Pkgs │ │ │ PR Approval │   │ │   (SvelteKit Static)    │ │
-│ └─────────────┘ │ └─────────────┘   │ └─────────────────────────┘ │
-│ ┌─────────────┐ │ ┌─────────────┐   │ ┌─────────────────────────┐ │
-│ │S3 + CF + R53│ │ │S3 + CF + R53│   │ │   Drivetrain Package    │ │
-│ │   AWS Infra │ │ │   AWS Infra │   │ │  (Rust Lambda + Layer)  │ │
-│ └─────────────┘ │ └─────────────┘   │ └─────────────────────────┘ │
-└─────────────────┴───────────────────┴───────────────────────────┘
-```
 
-### Core Modules
+### Deployment Flow
 
-#### **Website Module** (`modules/website/`)
-- **Purpose**: Static website hosting with global CDN
-- **Components**: S3 buckets, CloudFront distribution, ACM certificates
-- **Features**: Dual-bucket architecture for website assets and activity data
-
-#### **Drivetrain Lambda Module** (`modules/drivetrain-lambda/`)
-- **Purpose**: Serverless GPS data processing infrastructure
-- **Components**: Lambda function, execution role, Tippecanoe layer
-- **Features**: High-memory configuration, custom runtime support
-
-#### **Athlete State Module** (`modules/athlete-state/`)
-- **Purpose**: User data and synchronization state management
-- **Components**: S3 bucket with versioning and lifecycle policies
-- **Features**: Secure storage for activity indexes and processing state
-
-#### **DNS Module** (`modules/dns/`)
-- **Purpose**: Domain management and SSL certificates
-- **Components**: Route53 hosted zone, ACM certificates, validation records
-- **Features**: Automated certificate validation and renewal
+1. **Component Updates**: When Hub, Drivetrain, or Tippecanoe repositories publish new containers
+2. **Bundle Build**: Automatically combines all artifacts into an immutable deployment bundle
+3. **Dev Staging**: Creates a prerelease with terraform plan for development environment
+4. **Dev Deploy**: Automatically deploys the staged release to development
+5. **Prod Staging**: If dev deployment succeeds, creates a prerelease with terraform plan for production
+6. **Manual Approval**: Human review of the production prerelease is required
+7. **Prod Deploy**: Upon approval, deploys the same bundle to production environment
 
 ## Technology Stack
 
 - **Infrastructure as Code**: OpenTofu (Terraform) 1.8+
-- **Cloud Platform**: AWS (S3, CloudFront, Lambda, Route53, ACM, Secrets Manager)
-- **Package Registry**: GitHub Container Registry
-- **CI/CD**: GitHub Actions with OIDC authentication
-- **Version Management**: YAML-based version tracking with automated PRs
-- **Security**: IAM roles, VPC isolation, encrypted storage
+- **Cloud Platform**: AWS (S3, CloudFront, Lambda, Route53, ACM)
+- **Container Registry**: GitHub Container Registry (ghcr.io)
+- **CI/CD**: GitHub Actions with reusable workflows
+- **Deployment Tracking**: GitHub Releases (prerelease = staging)
+- **Security**: IAM roles, OIDC authentication
 
-## Getting Started
+## Project Structure
+
+```
+frame/
+├── .github/workflows/          # Deployment automation
+│   ├── build-bundle.yml       # Creates deployment bundles
+│   ├── base-stage.yml         # Reusable staging workflow
+│   ├── base-deploy.yml        # Reusable deployment workflow
+│   ├── dev-stage.yml          # Dev staging trigger
+│   ├── dev-deploy.yml         # Dev deployment trigger
+│   ├── prod-stage.yml         # Prod staging trigger
+│   └── prod-deploy.yml        # Prod deployment trigger
+├── environments/              # Environment configurations
+│   ├── dev/                  # Development environment
+│   └── prod/                 # Production environment
+├── modules/                  # Reusable infrastructure modules
+│   ├── website/              # Static website hosting
+│   ├── drivetrain-lambda/    # Lambda function infrastructure
+│   ├── athlete-state/        # User data storage
+│   └── dns/                  # Domain and certificates
+└── scripts/                  # Utility scripts
+    └── download-packages.sh  # Legacy package download
+```
+
+## Deployment Bundle System
+
+### Bundle Creation
+
+When components publish new containers, Frame automatically:
+1. Downloads artifacts from GitHub Container Registry
+2. Packages with terraform configurations
+3. Creates immutable bundle tagged with `YYYYMMDD-{hash}`
+4. Labels with component commit SHAs for traceability
+
+### Bundle Contents
+
+```
+ghcr.io/kreed/ridelines-bundle:YYYYMMDD-{hash}
+├── /deployment/
+│   ├── artifacts/
+│   │   ├── hub/static-site/      # Frontend build
+│   │   └── drivetrain/
+│   │       ├── lambda.zip        # Lambda function
+│   │       └── layer.zip         # Tippecanoe layer
+│   └── terraform/
+│       ├── environments/         # Environment configs
+│       └── modules/              # Infrastructure modules
+```
+
+### Container Labels
+
+Each bundle includes metadata as container labels:
+- `ridelines.bundle.version`: Bundle version (YYYYMMDD-{hash})
+- `ridelines.commit.frame`: Frame repository commit
+- `ridelines.commit.hub`: Hub repository commit
+- `ridelines.commit.drivetrain`: Drivetrain repository commit
+- `ridelines.commit.tippecanoe`: Tippecanoe commit
+
+## Deployment Workflows
+
+### Development Pipeline
+
+1. **Trigger**: New `ridelines-bundle` published
+2. **Stage**: Creates prerelease with terraform plan
+3. **Deploy**: Automatically deploys staging release
+4. **Result**: Bundle tagged as `dev-current`
+
+### Production Pipeline
+
+1. **Trigger**: Dev release marked as deployed
+2. **Stage**: Creates prod prerelease with terraform plan
+3. **Approval**: Manual review required
+4. **Deploy**: Applies reviewed plan
+5. **Result**: Bundle tagged as `prod-current`
+
+### Release States
+
+- **Prerelease (staging)**: Release awaiting deployment
+- **Release (deployed)**: Successfully deployed release
+
+## Initial Setup
 
 ### Prerequisites
 
 - **OpenTofu CLI**: 1.8+ for infrastructure management
 - **AWS CLI**: Configured with appropriate permissions
-- **GitHub CLI**: For package management (optional)
-- **Git**: For version control
+- **GitHub CLI**: For release management
+- **Docker**: For bundle extraction
 
-### Project Structure
-
-```
-frame/
-├── .github/workflows/          # Deployment automation
-│   ├── deploy-dev.yml         # Development environment deployment
-│   ├── deploy-prod.yml        # Production environment deployment
-│   └── version-updater.yml    # Automated version management
-├── environments/              # Environment-specific configurations
-│   ├── dev/                  # Development environment
-│   │   ├── main.tf           # Dev infrastructure configuration
-│   │   ├── variables.tf      # Dev-specific variables
-│   │   ├── backend.tf        # Terraform state configuration
-│   │   ├── terraform.tfvars  # Environment values
-│   │   └── outputs.tf        # Dev environment outputs
-│   └── prod/                 # Production environment
-│       ├── main.tf           # Prod infrastructure configuration
-│       ├── variables.tf      # Prod-specific variables
-│       ├── backend.tf        # Terraform state configuration
-│       ├── terraform.tfvars  # Environment values
-│       └── outputs.tf        # Prod environment outputs
-├── modules/                  # Reusable infrastructure modules
-│   ├── website/              # Static website hosting
-│   │   ├── main.tf          # S3 + CloudFront + CDN setup
-│   │   ├── variables.tf     # Module inputs
-│   │   └── outputs.tf       # Module outputs
-│   ├── drivetrain-lambda/    # Lambda function infrastructure
-│   │   ├── main.tf          # Lambda + IAM + layer setup
-│   │   ├── variables.tf     # Module inputs
-│   │   └── outputs.tf       # Module outputs
-│   ├── athlete-state/        # User data storage
-│   │   ├── main.tf          # S3 bucket with policies
-│   │   ├── variables.tf     # Module inputs
-│   │   └── outputs.tf       # Module outputs
-│   └── dns/                  # Domain and certificate management
-│       ├── main.tf          # Route53 + ACM setup
-│       ├── variables.tf     # Module inputs
-│       ├── outputs.tf       # Module outputs
-│       └── versions.tf      # Provider requirements
-├── scripts/                  # Package management utilities
-│   └── download-packages.sh # Package download automation
-├── artifacts/                # Downloaded package artifacts (gitignored)
-└── versions.yml             # Package version tracking
-```
-
-### Initial Setup
+### Environment Setup
 
 1. **Configure AWS credentials**:
    ```bash
@@ -131,11 +153,11 @@ frame/
 
 2. **Clone the repository**:
    ```bash
-   git clone https://github.com/yourusername/ridelines.git
-   cd ridelines/frame
+   git clone https://github.com/kreed/ridelines-frame.git
+   cd ridelines-frame
    ```
 
-3. **Initialize development environment**:
+3. **Initialize infrastructure**:
    ```bash
    cd environments/dev
    tofu init
@@ -143,173 +165,7 @@ frame/
    tofu apply
    ```
 
-## Package Management
-
-Frame operates on a package-based deployment model where component repositories publish their build artifacts to GitHub Container Registry.
-
-### Published Packages
-
-| Package | Source | Description |
-|---------|--------|-------------|
-| `ghcr.io/ridelines/hub` | `hub/` repository | SvelteKit static site build |
-| `ghcr.io/ridelines/drivetrain-lambda` | `drivetrain/` repository | Rust Lambda deployment package |
-| `ghcr.io/ridelines/drivetrain-tippecanoe-layer` | `drivetrain/` repository | Tippecanoe Lambda layer |
-
-### Version Management
-
-Package versions are tracked in `versions.yml`:
-
-```yaml
-# Package versions for deployment
-packages:
-  hub:
-    version: "v1.2.3"
-    registry: "ghcr.io/ridelines/hub"
-    type: "static-site"
-    
-  drivetrain-lambda:
-    version: "v2.1.0" 
-    registry: "ghcr.io/ridelines/drivetrain-lambda"
-    type: "lambda-function"
-    
-  drivetrain-tippecanoe-layer:
-    version: "v2.1.0"
-    registry: "ghcr.io/ridelines/drivetrain-tippecanoe-layer"
-    type: "lambda-layer"
-```
-
-### Automated Version Updates
-
-The version updater workflow automatically:
-
-1. **Monitors** component repositories for new releases
-2. **Creates** consolidated PRs with version updates
-3. **Triggers** development deployment on merge
-4. **Requires** manual approval for production deployment
-
-## Environment Configuration
-
-### Development Environment
-
-- **Auto-deployment**: Triggered when `versions.yml` changes
-- **Domain**: `dev.yourdomain.com`
-- **Purpose**: Testing and integration
-- **Resource sizing**: Smaller instances for cost optimization
-
-```bash
-cd environments/dev
-tofu plan
-tofu apply
-```
-
-### Production Environment
-
-- **Manual deployment**: Requires PR approval process
-- **Domain**: `yourdomain.com`
-- **Purpose**: Live application serving users
-- **Resource sizing**: Production-optimized configurations
-
-```bash
-cd environments/prod
-tofu plan
-tofu apply
-```
-
-## Infrastructure Components
-
-### Website Infrastructure (S3 + CloudFront)
-
-```hcl
-module "website" {
-  source = "../../modules/website"
-  
-  project_name = var.project_name
-  environment  = local.environment
-  domain_name  = var.domain_name
-  
-  # Hub package configuration
-  hub_package_path = "./artifacts/hub"
-  
-  # S3 and CloudFront settings
-  cloudfront_price_class = var.cloudfront_price_class
-  enable_logging        = var.enable_cloudfront_logging
-  
-  tags = local.common_tags
-}
-```
-
-### Lambda Infrastructure
-
-```hcl
-module "drivetrain_lambda" {
-  source = "../../modules/drivetrain-lambda"
-  
-  project_name = var.project_name
-  environment  = local.environment
-  
-  # Package paths
-  lambda_package_path       = "./artifacts/lambda.zip"
-  tippecanoe_layer_package_path = "./artifacts/layer.zip"
-  
-  # S3 bucket references
-  activities_bucket_name    = module.website.activities_bucket_name
-  athlete_state_bucket_name = module.athlete_state.bucket_name
-  
-  # CloudFront integration
-  cloudfront_distribution_id = module.website.cloudfront_distribution_id
-  
-  tags = local.common_tags
-}
-```
-
-## Deployment Workflows
-
-### Development Deployment
-
-Triggered automatically when:
-- `versions.yml` is updated (new package versions)
-- Infrastructure code changes in `main` branch
-
-```yaml
-name: Deploy Development
-on:
-  push:
-    branches: [main]
-    paths: ['versions.yml', 'environments/dev/**', 'modules/**']
-```
-
-### Production Deployment
-
-Requires manual approval:
-1. Create PR with changes
-2. Review and approve
-3. Merge triggers production deployment
-
-```yaml
-name: Deploy Production
-on:
-  pull_request:
-    types: [closed]
-    branches: [main]
-```
-
-### Package Download
-
-Before deployment, packages are automatically downloaded:
-
-```bash
-#!/bin/bash
-# Download packages based on versions.yml
-
-# Download hub static site
-gh run download --repo ridelines/hub --name hub-build
-
-# Download lambda packages  
-gh run download --repo ridelines/drivetrain --name lambda-package
-gh run download --repo ridelines/drivetrain --name tippecanoe-layer
-```
-
-## Configuration Variables
+## Configuration
 
 ### Environment Variables
 
@@ -323,199 +179,201 @@ Each environment supports these configuration options:
 | `aws_region` | AWS region | `us-west-2` | Both |
 | `cloudfront_price_class` | CloudFront pricing tier | `PriceClass_100` | Both |
 | `enable_cloudfront_logging` | Access logging | `true` | Both |
-| `enable_lambda_function_url` | Lambda function URL | `false` | Both |
 
-### Cross-Account Configuration
+### GitHub Secrets
 
-For production environments using separate AWS accounts:
+Required for GitHub Actions:
 
-```hcl
-# Remote state for dev environment name servers
-data "terraform_remote_state" "dev" {
-  backend = "s3"
-  config = {
-    bucket = "tofu-052941644876" 
-    key    = "ridelines-frame/terraform.tfstate"
-    region = "us-west-2"
-  }
-}
+| Secret | Description | Scope |
+|--------|-------------|-------|
+| `AWS_ROLE_ARN` | OIDC role for AWS access | Repository |
+| `PUBLIC_MAPBOX_ACCESS_TOKEN` | MapBox token for hub build | Organization |
 
-# DNS delegation to dev subdomain
-resource "aws_route53_record" "dev_delegation" {
-  zone_id = module.dns.hosted_zone_id
-  name    = "dev.${var.domain_name}"
-  type    = "NS"
-  ttl     = 300
-  records = data.terraform_remote_state.dev.outputs.name_servers
-}
+### GitHub Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `AWS_REGION` | AWS deployment region | `us-west-2` |
+
+## Manual Operations
+
+### Viewing Deployment History
+
+```bash
+# List all releases for an environment
+gh release list --limit 20 | grep "^dev-"
+
+# View specific release details
+gh release view dev-20241215-abc123
+
+# List deployed releases only
+gh release list --exclude-pre-releases
 ```
 
-## Monitoring & Observability
+### Manual Deployment
 
-### CloudWatch Integration
+```bash
+# Trigger bundle build
+gh workflow run build-bundle.yml
 
-Frame provisions comprehensive monitoring:
+# Create staging release manually
+gh workflow run base-stage.yml \
+  -f environment=dev \
+  -f bundle_version=20241215-abc123 \
+  -f trigger_type=manual
+```
 
-- **Lambda Metrics**: Execution duration, memory usage, error rates
-- **CloudFront Metrics**: Cache hit ratio, origin response times
-- **S3 Metrics**: Request metrics and storage analytics
-- **Custom Metrics**: Application-specific metrics from Lambda
+### Rollback Procedure
 
-### Infrastructure Monitoring
+```bash
+# Deploy a previous bundle version
+gh release create dev-20241214-xyz789-rollback \
+  --prerelease \
+  --title "Rollback to previous version"
+  
+# This will trigger the deployment workflow
+```
 
-```hcl
-# CloudWatch log groups for Lambda
-resource "aws_cloudwatch_log_group" "lambda_logs" {
-  name              = "/aws/lambda/${aws_lambda_function.ridelines_drivetrain.function_name}"
-  retention_in_days = 14
-  tags              = var.tags
-}
+## Monitoring & Debugging
 
-# CloudFront monitoring
-resource "aws_cloudwatch_distribution" "monitoring" {
-  distribution_id = aws_cloudfront_distribution.website.id
-  enabled         = true
-}
+### Workflow Status
+
+```bash
+# View recent workflow runs
+gh run list --workflow=build-bundle.yml
+
+# Watch deployment progress
+gh run watch
+```
+
+### Bundle Inspection
+
+```bash
+# Pull and inspect bundle
+docker pull ghcr.io/kreed/ridelines-bundle:latest
+docker inspect ghcr.io/kreed/ridelines-bundle:latest | jq '.[0].Config.Labels'
+
+# Extract bundle contents
+docker create --name temp ghcr.io/kreed/ridelines-bundle:latest /bin/sh
+docker cp temp:/deployment ./bundle-contents
+docker rm temp
+```
+
+### Release Debugging
+
+```bash
+# Check staging releases
+gh release list --limit 10 | grep "Pre-release"
+
+# View deployment logs
+gh run view <run-id> --log
 ```
 
 ## Security
 
-### IAM Roles & Policies
+### OIDC Authentication
 
-Frame implements security best practices:
+GitHub Actions authenticate to AWS using OpenID Connect:
+- No long-lived credentials
+- Temporary session tokens
+- Scoped to specific workflows
 
-- **Principle of Least Privilege**: Minimal required permissions
-- **Cross-Service Roles**: Lambda execution role with specific S3/CloudFront access
-- **OIDC Authentication**: GitHub Actions authenticate via OpenID Connect
-- **Resource-Based Policies**: S3 bucket policies for CloudFront access
+### IAM Roles
 
-### Example IAM Configuration
+- **GitHub Actions Role**: Deployment permissions
+- **Lambda Execution Role**: Runtime permissions
+- **CloudFront OAC**: S3 bucket access
 
-```hcl
-# Lambda execution role
-resource "aws_iam_role" "lambda_role" {
-  name = "${var.project_name}-${var.environment}-lambda-role"
-  
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Action = "sts:AssumeRole"
-        Effect = "Allow"
-        Principal = {
-          Service = "lambda.amazonaws.com"
-        }
-      }
-    ]
-  })
-  
-  tags = var.tags
-}
-```
+### Production Protection
 
-### Secrets Management
-
-- **API Keys**: Stored in AWS Secrets Manager
-- **No Hardcoded Secrets**: All sensitive data via AWS services
-- **Environment Isolation**: Separate secrets per environment
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Package Download Failures**
-   ```bash
-   # Check GitHub CLI authentication
-   gh auth status
-   
-   # Re-authenticate if needed
-   gh auth login
-   ```
-
-2. **Terraform State Issues**
-   ```bash
-   # Refresh state
-   tofu refresh
-   
-   # Check state file
-   tofu state list
-   ```
-
-3. **DNS Propagation**
-   ```bash
-   # Check DNS resolution
-   dig yourdomain.com
-   
-   # Check certificate status
-   aws acm list-certificates --region us-east-1
-   ```
-
-### Debug Mode
-
-Enable verbose logging:
-
-```bash
-# Terraform debugging
-export TF_LOG=DEBUG
-tofu plan
-
-# AWS CLI debugging  
-export AWS_CLI_DEBUG=1
-aws s3 ls
-```
-
-### State Management
-
-```bash
-# Import existing resources
-tofu import aws_s3_bucket.example bucket-name
-
-# Move resources between states
-tofu state mv aws_instance.foo aws_instance.bar
-
-# Remove from state without destroying
-tofu state rm aws_instance.foo
-```
-
-## Contributing
-
-### Development Guidelines
-
-1. **Module Design**: Keep modules focused and reusable
-2. **Variable Naming**: Use descriptive names with proper types
-3. **Documentation**: Add descriptions for all variables and outputs
-4. **Testing**: Test infrastructure changes in dev environment first
-5. **Security**: Follow AWS security best practices
-
-### Making Changes
-
-1. **Fork** the repository
-2. **Create** feature branch: `git checkout -b feature/infrastructure-improvement`
-3. **Test** in development environment
-4. **Document** changes in PR description
-5. **Request** review from infrastructure team
-6. **Deploy** to production after approval
-
-### Code Style
-
-- **Terraform Style**: Use `terraform fmt` for formatting
-- **Variable Organization**: Group related variables together
-- **Resource Naming**: Use consistent naming conventions
-- **Comments**: Explain complex logic and configurations
+- Environment protection rules
+- Required reviewers for production
+- Manual approval gate
+- Deployment history audit trail
 
 ## Cost Optimization
 
 ### Development Environment
 
-- **Smaller Instances**: Reduced CloudFront price class
-- **Shorter Retention**: Reduced log retention periods
-- **Lifecycle Policies**: Automatic cleanup of old data
+- Smaller CloudFront distribution
+- Reduced Lambda memory
+- Shorter log retention
+- Automatic staging cleanup
 
 ### Production Environment
 
-- **Right-Sizing**: Appropriate resource allocation
-- **Monitoring**: CloudWatch cost analytics
-- **Reserved Capacity**: Consider reserved instances for predictable workloads
+- Full CloudFront coverage
+- Optimized Lambda sizing
+- Extended log retention
+- Manual cleanup control
+
+## Contributing
+
+### Development Workflow
+
+1. Fork the repository
+2. Create feature branch
+3. Test changes in dev environment
+4. Submit pull request
+5. Wait for bundle build and staging
+6. Deploy completes automatically
+
+### Commit Guidelines
+
+This project uses semantic commits:
+- `feat:` New features
+- `fix:` Bug fixes  
+- `docs:` Documentation changes
+- `refactor:` Code restructuring
+- `chore:` Maintenance tasks
+
+### Testing Infrastructure Changes
+
+```bash
+# Plan changes locally
+cd environments/dev
+tofu plan
+
+# Validate modules
+tofu validate
+
+# Format code
+tofu fmt -recursive
+```
+
+## Troubleshooting
+
+### Bundle Build Failures
+
+```bash
+# Check component container availability
+docker pull ghcr.io/kreed/ridelines-hub:latest
+docker pull ghcr.io/kreed/ridelines-drivetrain:latest
+
+# Verify container labels
+docker inspect <image> | jq '.[0].Config.Labels'
+```
+
+### Deployment Failures
+
+```bash
+# Check terraform plan
+gh release download <release-name> --pattern "*.tfplan"
+tofu show terraform-dev.tfplan
+
+# Verify AWS credentials
+aws sts get-caller-identity
+```
+
+### State Issues
+
+```bash
+# Refresh state
+tofu refresh
+
+# Import missing resources
+tofu import aws_s3_bucket.example bucket-name
+```
 
 ## License
 
@@ -523,9 +381,7 @@ This project is licensed under the MIT License - see the [LICENSE](../LICENSE) f
 
 ## Links
 
-- [Backend (Drivetrain)](https://github.com/kreed/ridelines-drivetrain/)
-- [Frontend (Hub)](https://github.com/kreed/ridelines-hub/)
-- **Frontend (Hub)**: [Hub Documentation](https://github.com/kreed/ridelines-hub/)
-- **Backend (Drivetrain)**: [Drivetrain Documentation](https://github.com/kreed/ridelines-drivetrain/)
-- **OpenTofu Documentation**: [OpenTofu.org](https://opentofu.org/)
+- **Frontend (Hub)**: [github.com/kreed/ridelines-hub](https://github.com/kreed/ridelines-hub)
+- **Backend (Drivetrain)**: [github.com/kreed/ridelines-drivetrain](https://github.com/kreed/ridelines-drivetrain)
+- **OpenTofu Documentation**: [opentofu.org](https://opentofu.org/)
 - **AWS Provider**: [Terraform AWS Provider](https://registry.terraform.io/providers/hashicorp/aws/latest)
