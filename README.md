@@ -112,20 +112,27 @@ Each bundle includes metadata as container labels:
 
 ## Deployment Workflows
 
+### Bundle Generation
+
+1. **Trigger**: Hub/Drivetrain containers published OR commits to Frame repository
+2. **Build**: Creates deployment bundle with all artifacts and infrastructure
+3. **Version**: Tagged with `YYYYMMDD-{hash}` format
+4. **Metadata**: Labeled with component commit SHAs for traceability
+
 ### Development Pipeline
 
-1. **Trigger**: New `ridelines-bundle` published
-2. **Stage**: Creates prerelease with terraform plan
+1. **Trigger**: New deployment bundle created
+2. **Stage**: Creates dev prerelease with OpenTofu plan
 3. **Deploy**: Automatically deploys staging release
-4. **Result**: Bundle tagged as `dev-current`
+4. **Success**: Triggers production staging workflow
 
 ### Production Pipeline
 
-1. **Trigger**: Dev release marked as deployed
-2. **Stage**: Creates prod prerelease with terraform plan
-3. **Approval**: Manual review required
-4. **Deploy**: Applies reviewed plan
-5. **Result**: Bundle tagged as `prod-current`
+1. **Trigger**: Dev deployment completes successfully
+2. **Stage**: Creates prod prerelease with OpenTofu plan
+3. **Approval**: Manual review of staging release required
+4. **Deploy**: Applies reviewed plan to production
+5. **Complete**: Release marked as deployed (no longer prerelease)
 
 ### Release States
 
@@ -185,7 +192,6 @@ Required for GitHub Actions:
 | Secret | Description | Scope |
 |--------|-------------|-------|
 | `AWS_ROLE_ARN` | OIDC role for AWS access | Repository |
-| `PUBLIC_MAPBOX_ACCESS_TOKEN` | MapBox token for hub build | Organization |
 
 ### GitHub Variables
 
@@ -214,11 +220,13 @@ gh release list --exclude-pre-releases
 # Trigger bundle build
 gh workflow run build-bundle.yml
 
-# Create staging release manually
-gh workflow run base-stage.yml \
-  -f environment=dev \
-  -f bundle_version=20241215-abc123 \
-  -f trigger_type=manual
+# Manually trigger dev staging
+gh workflow run dev-stage.yml \
+  -f bundle_version=20241215-abc123
+
+# Manually trigger prod staging
+gh workflow run prod-stage.yml \
+  -f bundle_version=20241215-abc123
 ```
 
 ### Rollback Procedure
@@ -267,43 +275,7 @@ gh release list --limit 10 | grep "Pre-release"
 gh run view <run-id> --log
 ```
 
-## Security
 
-### OIDC Authentication
-
-GitHub Actions authenticate to AWS using OpenID Connect:
-- No long-lived credentials
-- Temporary session tokens
-- Scoped to specific workflows
-
-### IAM Roles
-
-- **GitHub Actions Role**: Deployment permissions
-- **Lambda Execution Role**: Runtime permissions
-- **CloudFront OAC**: S3 bucket access
-
-### Production Protection
-
-- Environment protection rules
-- Required reviewers for production
-- Manual approval gate
-- Deployment history audit trail
-
-## Cost Optimization
-
-### Development Environment
-
-- Smaller CloudFront distribution
-- Reduced Lambda memory
-- Shorter log retention
-- Automatic staging cleanup
-
-### Production Environment
-
-- Full CloudFront coverage
-- Optimized Lambda sizing
-- Extended log retention
-- Manual cleanup control
 
 ## Contributing
 
