@@ -14,7 +14,7 @@ jobs:
     name: Deploy to Production
     # Only trigger for prod staging releases (prereleases starting with "prod-")
     if: github.event.release.prerelease == true && startsWith(github.event.release.name, 'prod-')
-    uses: ./.github/workflows/base-deploy.yml
+    uses: ./.github/workflows/shared/base-deploy.yml
     with:
       environment: prod
       release_name: ${{ github.event.release.name }}

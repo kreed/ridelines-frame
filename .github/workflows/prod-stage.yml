@@ -33,7 +33,7 @@ jobs:
     name: Stage Production Release
     needs: extract-version
     if: needs.extract-version.outputs.bundle_version != ''
-    uses: ./.github/workflows/base-stage.yml
+    uses: ./.github/workflows/shared/base-stage.yml
     with:
       environment: prod
       bundle_version: ${{ needs.extract-version.outputs.bundle_version }}
