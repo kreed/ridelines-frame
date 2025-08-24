@@ -9,8 +9,21 @@ permissions:
   packages: read
 
 jobs:
+  debug:
+    name: Debug Registry Package Event
+    runs-on: ubuntu-latest
+    steps:
+      - name: Debug package event
+        run: |
+          echo "Package type: ${{ github.event.registry_package.package_type }}"
+          echo "Package name: ${{ github.event.registry_package.name }}"
+          echo "Package version: ${{ github.event.registry_package.package_version.name }}"
+          echo "Full event:"
+          echo '${{ toJSON(github.event) }}'
+
   stage:
     name: Stage Development Release
+    needs: debug
     if: github.event.registry_package.package_type == 'container' && github.event.registry_package.name == 'ridelines-bundle'
     uses: ./.github/workflows/base-stage.yml
     with:
