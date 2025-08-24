@@ -69,13 +69,11 @@ frame/
 ├── environments/              # Environment configurations
 │   ├── dev/                  # Development environment
 │   └── prod/                 # Production environment
-├── modules/                  # Reusable infrastructure modules
-│   ├── website/              # Static website hosting
-│   ├── drivetrain-lambda/    # Lambda function infrastructure
-│   ├── athlete-state/        # User data storage
-│   └── dns/                  # Domain and certificates
-└── scripts/                  # Utility scripts
-    └── download-packages.sh  # Legacy package download
+└── modules/                  # Reusable infrastructure modules
+    ├── website/              # Static website hosting
+    ├── drivetrain-lambda/    # Lambda function infrastructure
+    ├── athlete-state/        # User data storage
+    └── dns/                  # Domain and certificates
 ```
 
 ## Deployment Bundle System

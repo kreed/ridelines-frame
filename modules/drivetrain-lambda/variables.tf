@@ -11,13 +11,13 @@ variable "environment" {
 variable "lambda_package_path" {
   description = "Path to the Lambda deployment package"
   type        = string
-  default     = "../../artifacts/lambda/lambda-package.zip"
+  default     = "../../artifacts/drivetrain/lambda.zip"
 }
 
 variable "tippecanoe_layer_package_path" {
   description = "Path to the tippecanoe Lambda layer package"
   type        = string
-  default     = "../../artifacts/layer/layer-package.zip"
+  default     = "../../artifacts/drivetrain/layer.zip"
 }
 
 variable "athlete_state_bucket_name" {
