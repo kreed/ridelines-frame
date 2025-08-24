@@ -16,10 +16,18 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Get bundle version
         id: bundle
         run: |
-          # Get the bundle version from the latest container label
+          # Pull the latest bundle and get the version from container label
+          docker pull ghcr.io/kreed/ridelines-bundle:latest
           BUNDLE_VERSION=$(docker inspect ghcr.io/kreed/ridelines-bundle:latest | jq -r '.[0].Config.Labels["ridelines.bundle.version"]')
           echo "bundle_version=${BUNDLE_VERSION}" >> $GITHUB_OUTPUT
           echo "Bundle version: ${BUNDLE_VERSION}"
