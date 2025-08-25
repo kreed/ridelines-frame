@@ -75,18 +75,8 @@ resource "aws_api_gateway_rest_api" "api" {
   }
 }
 
-# JWT Authorizer for protected endpoints
-resource "aws_api_gateway_authorizer" "jwt_authorizer" {
-  name                   = "${local.api_name}-jwt-authorizer"
-  rest_api_id           = aws_api_gateway_rest_api.api.id
-  authorizer_uri        = ""
-  authorizer_credentials = ""
-  identity_source       = "method.request.header.Authorization"
-  type                  = "TOKEN"
-  
-  # Note: For JWT authorization with KMS, we'll use the built-in JWT authorizer
-  # configured in the OpenAPI spec above
-}
+# JWT Authorizer is configured in the OpenAPI spec using x-amazon-apigateway-authorizer
+# No separate Terraform resource needed - API Gateway creates it from the spec
 
 # Lambda permissions for API Gateway to invoke functions
 resource "aws_lambda_permission" "auth_lambda_permission" {
