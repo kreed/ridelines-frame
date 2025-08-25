@@ -14,6 +14,11 @@ variable "lambda_package_path" {
   default     = "../../../artifacts/drivetrain/user-lambda.zip"
 }
 
+variable "frontend_url" {
+  description = "Frontend URL for PMTiles URL generation"
+  type        = string
+}
+
 variable "tags" {
   description = "Tags to apply to all resources"
   type        = map(string)

@@ -109,6 +109,7 @@ resource "aws_lambda_function" "users_lambda" {
   environment {
     variables = {
       USERS_TABLE_NAME = aws_dynamodb_table.users.name
+      FRONTEND_URL     = var.frontend_url
       RUST_LOG         = "info"
     }
   }

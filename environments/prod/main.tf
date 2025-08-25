@@ -79,6 +79,7 @@ module "drivetrain_users" {
 
   project_name = var.project_name
   environment  = local.environment
+  frontend_url = "https://${var.domain_name}"
   tags         = local.common_tags
 }
 
