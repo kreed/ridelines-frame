@@ -132,10 +132,48 @@ resource "aws_api_gateway_stage" "api_stage" {
     })
   }
 
+  depends_on = [aws_api_gateway_account.api_gateway_account]
+
   tags = {
     Environment = var.environment
     Project     = "ridelines"
   }
+}
+
+# IAM role for API Gateway CloudWatch Logs
+resource "aws_iam_role" "api_gateway_cloudwatch_role" {
+  name = "api-gateway-cloudwatch-role-${var.environment}"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "apigateway.amazonaws.com"
+        }
+      }
+    ]
+  })
+
+  tags = {
+    Environment = var.environment
+    Project     = "ridelines"
+  }
+}
+
+# Attach the managed policy for CloudWatch Logs
+resource "aws_iam_role_policy_attachment" "api_gateway_cloudwatch_policy" {
+  role       = aws_iam_role.api_gateway_cloudwatch_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs"
+}
+
+# Set the CloudWatch Logs role ARN in API Gateway account settings
+resource "aws_api_gateway_account" "api_gateway_account" {
+  cloudwatch_role_arn = aws_iam_role.api_gateway_cloudwatch_role.arn
+  
+  depends_on = [aws_iam_role_policy_attachment.api_gateway_cloudwatch_policy]
 }
 
 # CloudWatch log group for API Gateway
