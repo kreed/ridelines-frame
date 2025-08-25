@@ -24,6 +24,15 @@ variable "users_table_arn" {
   type        = string
 }
 
+variable "frontend_url" {
+  description = "Frontend URL for OAuth redirects"
+  type        = string
+}
+
+variable "api_url" {
+  description = "API Gateway URL for JWT issuer"
+  type        = string
+}
 
 variable "tags" {
   description = "Tags to apply to all resources"

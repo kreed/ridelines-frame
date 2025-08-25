@@ -90,6 +90,8 @@ module "drivetrain_auth" {
   environment      = local.environment
   users_table_name = module.drivetrain_users.users_table_name
   users_table_arn  = module.drivetrain_users.users_table_arn
+  frontend_url     = "https://${var.domain_name}"
+  api_url          = "https://api.${var.domain_name}"
   tags             = local.common_tags
 }
 
@@ -121,7 +123,7 @@ module "api_gateway" {
   user_lambda_function_name = module.drivetrain_users.lambda_function_name
   jwt_kms_key_arn          = module.drivetrain_auth.jwt_signing_key_arn
   frontend_origin          = "https://${var.domain_name}"
-  openapi_spec_path        = "artifacts/drivetrain/ridelines-api.yaml"
+  openapi_spec_path        = "../../../artifacts/drivetrain/ridelines-api.yaml"
 }
 
 # GitHub Actions IAM module

@@ -9,23 +9,23 @@ resource "aws_cloudwatch_log_group" "users_lambda_logs" {
 resource "aws_dynamodb_table" "users" {
   name         = "${var.project_name}-${var.environment}-users"
   billing_mode = "PAY_PER_REQUEST"
-  hash_key     = "user_id"
+  hash_key     = "id"
 
   attribute {
-    name = "user_id"
+    name = "id"
     type = "S"
   }
 
   # Global Secondary Index for intervals.icu athlete ID lookups
   global_secondary_index {
     name     = "intervals-athlete-index"
-    hash_key = "intervals_athlete_id"
+    hash_key = "athlete_id"
 
     projection_type = "ALL"
   }
 
   attribute {
-    name = "intervals_athlete_id"
+    name = "athlete_id"
     type = "S"
   }
 

@@ -14,7 +14,6 @@ variable "lambda_package_path" {
   default     = "../../../artifacts/drivetrain/user-lambda.zip"
 }
 
-
 variable "tags" {
   description = "Tags to apply to all resources"
   type        = map(string)
