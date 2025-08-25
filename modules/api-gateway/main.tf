@@ -6,10 +6,12 @@ locals {
 locals {
   # Use templatefile to substitute all variables at once
   openapi_spec_substituted = templatefile(var.openapi_spec_path, {
-    auth_lambda_arn  = var.auth_lambda_arn
-    user_lambda_arn  = var.user_lambda_arn
-    domain_name      = var.domain_name
-    frontend_origin  = var.frontend_origin
+    auth_lambda_arn              = var.auth_lambda_arn
+    user_lambda_arn              = var.user_lambda_arn
+    auth_verify_lambda_arn       = var.auth_verify_lambda_arn
+    auth_verify_lambda_role_arn  = var.auth_verify_lambda_role_arn
+    domain_name                  = var.domain_name
+    frontend_origin              = var.frontend_origin
   })
   
   # Parse the final OpenAPI spec

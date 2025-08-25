@@ -249,7 +249,7 @@ resource "aws_lambda_function" "auth_lambda" {
       OAUTH_CREDENTIALS_SECRET_ARN = aws_secretsmanager_secret.oauth_credentials.arn
       USERS_TABLE_NAME            = var.users_table_name
       FRONTEND_URL                = var.frontend_url
-      API_URL                     = var.api_url
+      API_DOMAIN                  = var.api_domain
       RUST_LOG                    = "info"
     }
   }
@@ -257,6 +257,88 @@ resource "aws_lambda_function" "auth_lambda" {
   depends_on = [
     aws_iam_role_policy_attachment.auth_lambda_basic_execution,
     aws_cloudwatch_log_group.auth_lambda_logs,
+  ]
+
+  tags = var.tags
+}
+
+# CloudWatch log group for auth verify Lambda function
+resource "aws_cloudwatch_log_group" "auth_verify_lambda_logs" {
+  name              = "/aws/lambda/${var.project_name}-${var.environment}-auth-verify"
+  retention_in_days = 14
+  tags              = var.tags
+}
+
+# IAM role for auth verify Lambda execution
+resource "aws_iam_role" "auth_verify_lambda_role" {
+  name = "${var.project_name}-${var.environment}-auth-verify-lambda-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "lambda.amazonaws.com"
+        }
+      }
+    ]
+  })
+
+  tags = var.tags
+}
+
+# Basic Lambda execution policy for auth verify
+resource "aws_iam_role_policy_attachment" "auth_verify_lambda_basic_execution" {
+  role       = aws_iam_role.auth_verify_lambda_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+# IAM policy for KMS access (JWT verification only)
+resource "aws_iam_role_policy" "auth_verify_lambda_kms" {
+  name = "${var.project_name}-${var.environment}-auth-verify-kms"
+  role = aws_iam_role.auth_verify_lambda_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "kms:Verify",
+          "kms:GetPublicKey",
+          "kms:DescribeKey"
+        ]
+        Resource = [
+          aws_kms_key.jwt_signing_key.arn
+        ]
+      }
+    ]
+  })
+}
+
+# Auth verify Lambda function
+resource "aws_lambda_function" "auth_verify_lambda" {
+  filename         = var.auth_verify_lambda_package_path
+  function_name    = "${var.project_name}-${var.environment}-auth-verify"
+  role             = aws_iam_role.auth_verify_lambda_role.arn
+  handler          = "bootstrap"
+  runtime          = "provided.al2023"
+  timeout          = 30
+  memory_size      = 256
+  source_code_hash = filebase64sha256(var.auth_verify_lambda_package_path)
+
+  environment {
+    variables = {
+      JWT_KMS_KEY_ID = aws_kms_key.jwt_signing_key.key_id
+      RUST_LOG       = "info"
+    }
+  }
+
+  depends_on = [
+    aws_iam_role_policy_attachment.auth_verify_lambda_basic_execution,
+    aws_cloudwatch_log_group.auth_verify_lambda_logs,
   ]
 
   tags = var.tags

@@ -14,6 +14,12 @@ variable "lambda_package_path" {
   default     = "../../../artifacts/drivetrain/auth-lambda.zip"
 }
 
+variable "auth_verify_lambda_package_path" {
+  description = "Path to the Lambda deployment package for auth verify function"
+  type        = string
+  default     = "../../../artifacts/drivetrain/auth-verify-lambda.zip"
+}
+
 variable "users_table_name" {
   description = "Name of the DynamoDB users table"
   type        = string
@@ -29,8 +35,8 @@ variable "frontend_url" {
   type        = string
 }
 
-variable "api_url" {
-  description = "API Gateway URL for JWT issuer"
+variable "api_domain" {
+  description = "API domain name (e.g., api.ridelines.xyz or dev.api.ridelines.xyz)"
   type        = string
 }
 

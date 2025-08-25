@@ -45,6 +45,16 @@ variable "frontend_origin" {
   type        = string
 }
 
+variable "auth_verify_lambda_arn" {
+  description = "ARN of the auth verify Lambda function"
+  type        = string
+}
+
+variable "auth_verify_lambda_role_arn" {
+  description = "ARN of the auth verify Lambda execution role"
+  type        = string
+}
+
 variable "openapi_spec_path" {
   description = "Path to the OpenAPI specification file"
   type        = string
