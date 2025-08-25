@@ -64,6 +64,7 @@ jobs:
           docker cp lambda-extract:/auth-lambda-package.zip artifacts/drivetrain/auth-lambda.zip
           docker cp lambda-extract:/user-lambda-package.zip artifacts/drivetrain/user-lambda.zip
           docker cp lambda-extract:/sync-lambda-package.zip artifacts/drivetrain/sync-lambda.zip
+          docker cp lambda-extract:/ridelines-api.yaml artifacts/drivetrain/ridelines-api.yaml
           docker rm lambda-extract
           
           # Pull and extract layer container (latest)
@@ -147,6 +148,11 @@ jobs:
           
           if [ ! -f "artifacts/drivetrain/sync-lambda.zip" ]; then
             echo "Error: Drivetrain sync-lambda.zip not found"
+            exit 1
+          fi
+          
+          if [ ! -f "artifacts/drivetrain/ridelines-api.yaml" ]; then
+            echo "Error: Drivetrain OpenAPI spec ridelines-api.yaml not found"
             exit 1
           fi
           

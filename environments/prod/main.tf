@@ -108,6 +108,22 @@ module "drivetrain_sync" {
   tags                        = local.common_tags
 }
 
+# API Gateway module
+module "api_gateway" {
+  source = "../../modules/api-gateway"
+
+  environment               = local.environment
+  domain_name              = "api.${var.domain_name}"
+  route53_zone_id          = module.dns.hosted_zone_id
+  auth_lambda_arn          = module.drivetrain_auth.lambda_function_arn
+  auth_lambda_function_name = module.drivetrain_auth.lambda_function_name
+  user_lambda_arn          = module.drivetrain_users.lambda_function_arn
+  user_lambda_function_name = module.drivetrain_users.lambda_function_name
+  jwt_kms_key_arn          = module.drivetrain_auth.jwt_signing_key_arn
+  frontend_origin          = "https://${var.domain_name}"
+  openapi_spec_path        = "artifacts/drivetrain/ridelines-api.yaml"
+}
+
 # GitHub Actions IAM module
 module "github_actions" {
   source = "../../modules/github-actions-iam"
