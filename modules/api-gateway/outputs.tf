@@ -22,8 +22,3 @@ output "api_domain_name" {
   description = "Custom domain name for the API"
   value       = aws_api_gateway_domain_name.api_domain.domain_name
 }
-
-output "jwt_authorizer_id" {
-  description = "ID of the JWT authorizer"
-  value       = aws_api_gateway_authorizer.jwt_authorizer.id
-}
