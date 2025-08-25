@@ -152,7 +152,7 @@ resource "aws_cloudwatch_log_group" "api_gateway_logs" {
 # Custom domain name
 resource "aws_api_gateway_domain_name" "api_domain" {
   domain_name     = var.domain_name
-  certificate_arn = aws_acm_certificate_validation.api_certificate_validation.certificate_arn
+  certificate_arn = aws_acm_certificate_validation.api_certificate_validation.regional_certificate_arn
 
   endpoint_configuration {
     types = ["REGIONAL"]
