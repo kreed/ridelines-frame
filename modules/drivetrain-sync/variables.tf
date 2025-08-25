@@ -11,7 +11,7 @@ variable "environment" {
 variable "lambda_package_path" {
   description = "Path to the Lambda deployment package"
   type        = string
-  default     = "../../../artifacts/drivetrain/lambda.zip"
+  default     = "../../../artifacts/drivetrain/sync-lambda.zip"
 }
 
 variable "tippecanoe_layer_package_path" {

@@ -95,9 +95,8 @@ resource "aws_iam_role_policy" "users_lambda_dynamodb" {
   })
 }
 
-# Users Lambda function (conditional deployment)
+# Users Lambda function
 resource "aws_lambda_function" "users_lambda" {
-  count = var.deploy_lambda ? 1 : 0
   filename         = var.lambda_package_path
   function_name    = "${var.project_name}-${var.environment}-users"
   role             = aws_iam_role.users_lambda_role.arn

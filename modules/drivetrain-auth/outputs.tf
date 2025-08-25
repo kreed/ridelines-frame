@@ -1,11 +1,11 @@
 output "lambda_function_name" {
   description = "Name of the auth Lambda function"
-  value       = var.deploy_lambda ? aws_lambda_function.auth_lambda[0].function_name : null
+  value       = aws_lambda_function.auth_lambda.function_name
 }
 
 output "lambda_function_arn" {
   description = "ARN of the auth Lambda function"
-  value       = var.deploy_lambda ? aws_lambda_function.auth_lambda[0].arn : null
+  value       = aws_lambda_function.auth_lambda.arn
 }
 
 output "oauth_state_table_name" {

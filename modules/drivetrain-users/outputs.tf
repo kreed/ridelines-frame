@@ -1,11 +1,11 @@
 output "lambda_function_name" {
   description = "Name of the users Lambda function"
-  value       = var.deploy_lambda ? aws_lambda_function.users_lambda[0].function_name : null
+  value       = aws_lambda_function.users_lambda.function_name
 }
 
 output "lambda_function_arn" {
   description = "ARN of the users Lambda function"
-  value       = var.deploy_lambda ? aws_lambda_function.users_lambda[0].arn : null
+  value       = aws_lambda_function.users_lambda.arn
 }
 
 output "users_table_name" {

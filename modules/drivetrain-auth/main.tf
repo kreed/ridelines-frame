@@ -231,9 +231,8 @@ resource "aws_iam_role_policy" "auth_lambda_users_table" {
   })
 }
 
-# Auth Lambda function (conditional deployment)
+# Auth Lambda function
 resource "aws_lambda_function" "auth_lambda" {
-  count = var.deploy_lambda ? 1 : 0
   filename         = var.lambda_package_path
   function_name    = "${var.project_name}-${var.environment}-auth"
   role             = aws_iam_role.auth_lambda_role.arn

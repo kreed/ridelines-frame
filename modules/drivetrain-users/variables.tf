@@ -11,14 +11,9 @@ variable "environment" {
 variable "lambda_package_path" {
   description = "Path to the Lambda deployment package for users function"
   type        = string
-  default     = "../../../artifacts/lambda/lambda-package.zip"
+  default     = "../../../artifacts/drivetrain/user-lambda.zip"
 }
 
-variable "deploy_lambda" {
-  description = "Whether to deploy the Lambda function (set false until code is ready)"
-  type        = bool
-  default     = false
-}
 
 variable "tags" {
   description = "Tags to apply to all resources"
