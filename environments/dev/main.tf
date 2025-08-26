@@ -60,7 +60,7 @@ module "drivetrain_users" {
 
   project_name = var.project_name
   environment  = local.environment
-  frontend_url = "https://dev.${var.domain_name}"
+  frontend_url = "https://${var.domain_name}"
   tags         = local.common_tags
 }
 
@@ -72,7 +72,7 @@ module "drivetrain_auth" {
   environment      = local.environment
   users_table_name = module.drivetrain_users.users_table_name
   users_table_arn  = module.drivetrain_users.users_table_arn
-  frontend_url     = "https://dev.${var.domain_name}"
+  frontend_url     = "https://${var.domain_name}"
   api_domain       = "api.${var.domain_name}"
   tags             = local.common_tags
 }
@@ -106,7 +106,7 @@ module "api_gateway" {
   auth_verify_lambda_arn      = module.drivetrain_auth.auth_verify_lambda_function_arn
   auth_verify_lambda_role_arn = module.drivetrain_auth.auth_verify_lambda_role_arn
   jwt_kms_key_arn             = module.drivetrain_auth.jwt_signing_key_arn
-  frontend_origin             = "https://dev.${var.domain_name}"
+  frontend_origin             = "https://${var.domain_name}"
   openapi_spec_path           = "../../../artifacts/drivetrain/ridelines-api.yaml"
 }
 
