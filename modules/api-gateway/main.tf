@@ -116,10 +116,6 @@ resource "aws_api_gateway_method_response" "openapi_200" {
   resource_id = aws_api_gateway_resource.openapi.id
   http_method = aws_api_gateway_method.openapi_get.http_method
   status_code = "200"
-
-  response_models = {
-    "application/x-yaml" = "Empty"
-  }
 }
 
 resource "aws_api_gateway_integration" "openapi" {
@@ -153,12 +149,19 @@ resource "aws_api_gateway_deployment" "api_deployment" {
   rest_api_id = aws_api_gateway_rest_api.api.id
 
   triggers = {
-    redeployment = sha1(jsonencode(local.updated_spec))
+    redeployment = sha1(jsonencode([
+      local.updated_spec,
+      aws_api_gateway_integration_response.openapi_200.response_templates
+    ]))
   }
 
   lifecycle {
     create_before_destroy = true
   }
+
+  depends_on = [
+    aws_api_gateway_integration_response.openapi_200
+  ]
 }
 
 # API Gateway stage
