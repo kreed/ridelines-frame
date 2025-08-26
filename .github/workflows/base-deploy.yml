@@ -20,7 +20,6 @@ permissions:
   contents: write
   packages: write
   id-token: write
-  actions: write
 
 env:
   REGISTRY: ghcr.io

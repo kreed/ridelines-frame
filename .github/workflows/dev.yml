@@ -12,7 +12,7 @@ on:
 
 permissions:
   contents: write
-  packages: read
+  packages: write
   id-token: write
   actions: write
 

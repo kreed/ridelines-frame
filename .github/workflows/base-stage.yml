@@ -11,31 +11,11 @@ on:
         description: 'Bundle version to stage'
         required: true
         type: string
-    outputs:
-      bundle_version:
-        description: 'The bundle version being staged'
-        value: ${{ jobs.stage.outputs.bundle_version }}
-      frame_commit:
-        description: 'Frame component commit SHA'
-        value: ${{ jobs.stage.outputs.frame_commit }}
-      hub_commit:
-        description: 'Hub component commit SHA'
-        value: ${{ jobs.stage.outputs.hub_commit }}
-      drivetrain_commit:
-        description: 'Drivetrain component commit SHA'
-        value: ${{ jobs.stage.outputs.drivetrain_commit }}
-      tippecanoe_commit:
-        description: 'Tippecanoe component commit SHA'
-        value: ${{ jobs.stage.outputs.tippecanoe_commit }}
-      previous_release:
-        description: 'Previous deployed release name (if any)'
-        value: ${{ jobs.stage.outputs.previous_release }}
 
 permissions:
   contents: write
   packages: read
   id-token: write
-  actions: write
 
 env:
   REGISTRY: ghcr.io
