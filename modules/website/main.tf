@@ -2,7 +2,7 @@
 provider "aws" {
   alias  = "us_east_1"
   region = "us-east-1"
-  
+
   default_tags {
     tags = var.tags
   }
@@ -194,7 +194,7 @@ resource "aws_s3_bucket_acl" "logs" {
   count  = var.enable_logging ? 1 : 0
   bucket = aws_s3_bucket.logs[0].id
   acl    = "log-delivery-write"
-  
+
   depends_on = [aws_s3_bucket_ownership_controls.logs]
 }
 
@@ -276,7 +276,7 @@ resource "aws_cloudfront_distribution" "main" {
     compress               = true
     viewer_protocol_policy = "redirect-to-https"
 
-    cache_policy_id = data.aws_cloudfront_cache_policy.caching_disabled.id
+    cache_policy_id            = data.aws_cloudfront_cache_policy.caching_disabled.id
     response_headers_policy_id = data.aws_cloudfront_response_headers_policy.security_headers.id
   }
 
@@ -289,7 +289,7 @@ resource "aws_cloudfront_distribution" "main" {
     compress               = true
     viewer_protocol_policy = "redirect-to-https"
 
-    cache_policy_id = data.aws_cloudfront_cache_policy.caching_optimized.id
+    cache_policy_id            = data.aws_cloudfront_cache_policy.caching_optimized.id
     response_headers_policy_id = data.aws_cloudfront_response_headers_policy.security_headers.id
   }
 
@@ -302,7 +302,7 @@ resource "aws_cloudfront_distribution" "main" {
     compress               = true
     viewer_protocol_policy = "redirect-to-https"
 
-    cache_policy_id = data.aws_cloudfront_cache_policy.caching_optimized.id
+    cache_policy_id            = data.aws_cloudfront_cache_policy.caching_optimized.id
     response_headers_policy_id = data.aws_cloudfront_response_headers_policy.security_headers.id
   }
 

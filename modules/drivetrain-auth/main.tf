@@ -245,12 +245,12 @@ resource "aws_lambda_function" "auth_lambda" {
   environment {
     variables = {
       OAUTH_STATE_TABLE_NAME       = aws_dynamodb_table.oauth_state.name
-      JWT_KMS_KEY_ID              = aws_kms_key.jwt_signing_key.key_id
+      JWT_KMS_KEY_ID               = aws_kms_key.jwt_signing_key.key_id
       OAUTH_CREDENTIALS_SECRET_ARN = aws_secretsmanager_secret.oauth_credentials.arn
-      USERS_TABLE_NAME            = var.users_table_name
-      FRONTEND_URL                = var.frontend_url
-      API_DOMAIN                  = var.api_domain
-      RUST_LOG                    = "info"
+      USERS_TABLE_NAME             = var.users_table_name
+      FRONTEND_URL                 = var.frontend_url
+      API_DOMAIN                   = var.api_domain
+      RUST_LOG                     = "info"
     }
   }
 

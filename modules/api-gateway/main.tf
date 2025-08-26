@@ -6,14 +6,14 @@ locals {
 locals {
   # Use templatefile to substitute all variables at once
   openapi_spec_substituted = templatefile(var.openapi_spec_path, {
-    auth_lambda_arn              = var.auth_lambda_arn
-    user_lambda_arn              = var.user_lambda_arn
-    auth_verify_lambda_arn       = var.auth_verify_lambda_arn
-    auth_verify_lambda_role_arn  = var.auth_verify_lambda_role_arn
-    domain_name                  = var.domain_name
-    frontend_origin              = var.frontend_origin
+    auth_lambda_arn             = var.auth_lambda_arn
+    user_lambda_arn             = var.user_lambda_arn
+    auth_verify_lambda_arn      = var.auth_verify_lambda_arn
+    auth_verify_lambda_role_arn = var.auth_verify_lambda_role_arn
+    domain_name                 = var.domain_name
+    frontend_origin             = var.frontend_origin
   })
-  
+
   # Parse the final OpenAPI spec
   updated_spec = yamldecode(local.openapi_spec_substituted)
 }
@@ -64,7 +64,7 @@ resource "aws_route53_record" "api_certificate_validation" {
 resource "aws_api_gateway_rest_api" "api" {
   name        = local.api_name
   description = "Ridelines API - ${var.environment} environment"
-  
+
   body = jsonencode(local.updated_spec)
 
   endpoint_configuration {
@@ -90,7 +90,7 @@ resource "aws_lambda_permission" "auth_lambda_permission" {
 }
 
 resource "aws_lambda_permission" "user_lambda_permission" {
-  statement_id  = "AllowAPIGatewayInvoke"  
+  statement_id  = "AllowAPIGatewayInvoke"
   action        = "lambda:InvokeFunction"
   function_name = var.user_lambda_function_name
   principal     = "apigateway.amazonaws.com"
@@ -100,7 +100,7 @@ resource "aws_lambda_permission" "user_lambda_permission" {
 # API Gateway deployment
 resource "aws_api_gateway_deployment" "api_deployment" {
   rest_api_id = aws_api_gateway_rest_api.api.id
-  
+
   triggers = {
     redeployment = sha1(jsonencode(local.updated_spec))
   }
@@ -119,17 +119,17 @@ resource "aws_api_gateway_stage" "api_stage" {
   access_log_settings {
     destination_arn = aws_cloudwatch_log_group.api_gateway_logs.arn
     format = jsonencode({
-      requestId      = "$context.requestId"
-      ip             = "$context.identity.sourceIp"
-      caller         = "$context.identity.caller"
-      user           = "$context.identity.user"
-      requestTime    = "$context.requestTime"
-      httpMethod     = "$context.httpMethod"
-      resourcePath   = "$context.resourcePath"
-      status         = "$context.status"
-      protocol       = "$context.protocol"
-      responseLength = "$context.responseLength"
-      error          = "$context.error.message"
+      requestId        = "$context.requestId"
+      ip               = "$context.identity.sourceIp"
+      caller           = "$context.identity.caller"
+      user             = "$context.identity.user"
+      requestTime      = "$context.requestTime"
+      httpMethod       = "$context.httpMethod"
+      resourcePath     = "$context.resourcePath"
+      status           = "$context.status"
+      protocol         = "$context.protocol"
+      responseLength   = "$context.responseLength"
+      error            = "$context.error.message"
       integrationError = "$context.integration.error"
     })
   }
@@ -174,7 +174,7 @@ resource "aws_iam_role_policy_attachment" "api_gateway_cloudwatch_policy" {
 # Set the CloudWatch Logs role ARN in API Gateway account settings
 resource "aws_api_gateway_account" "api_gateway_account" {
   cloudwatch_role_arn = aws_iam_role.api_gateway_cloudwatch_role.arn
-  
+
   depends_on = [aws_iam_role_policy_attachment.api_gateway_cloudwatch_policy]
 }
 
@@ -191,7 +191,7 @@ resource "aws_cloudwatch_log_group" "api_gateway_logs" {
 
 # Custom domain name
 resource "aws_api_gateway_domain_name" "api_domain" {
-  domain_name     = var.domain_name
+  domain_name              = var.domain_name
   regional_certificate_arn = aws_acm_certificate.api_certificate.arn
 
   endpoint_configuration {
@@ -219,7 +219,7 @@ resource "aws_route53_record" "api_domain_record" {
 
   alias {
     name                   = aws_api_gateway_domain_name.api_domain.regional_domain_name
-    zone_id               = aws_api_gateway_domain_name.api_domain.regional_zone_id
+    zone_id                = aws_api_gateway_domain_name.api_domain.regional_zone_id
     evaluate_target_health = false
   }
 }
