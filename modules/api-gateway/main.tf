@@ -116,6 +116,10 @@ resource "aws_api_gateway_method_response" "openapi_200" {
   resource_id = aws_api_gateway_resource.openapi.id
   http_method = aws_api_gateway_method.openapi_get.http_method
   status_code = "200"
+
+  response_parameters = {
+    "method.response.header.Content-Type" = true
+  }
 }
 
 resource "aws_api_gateway_integration" "openapi" {
@@ -123,12 +127,6 @@ resource "aws_api_gateway_integration" "openapi" {
   resource_id = aws_api_gateway_resource.openapi.id
   http_method = aws_api_gateway_method.openapi_get.http_method
   type        = "MOCK"
-
-  request_templates = {
-    "application/json" = jsonencode({
-      statusCode = 200
-    })
-  }
 }
 
 resource "aws_api_gateway_integration_response" "openapi_200" {
@@ -136,6 +134,10 @@ resource "aws_api_gateway_integration_response" "openapi_200" {
   resource_id = aws_api_gateway_resource.openapi.id
   http_method = aws_api_gateway_method.openapi_get.http_method
   status_code = aws_api_gateway_method_response.openapi_200.status_code
+
+  response_parameters = {
+    "method.response.header.Content-Type" = "'application/x-yaml'"
+  }
 
   response_templates = {
     "application/x-yaml" = file(var.openapi_spec_path)
