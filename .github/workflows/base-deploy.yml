@@ -11,10 +11,6 @@ on:
         description: 'Bundle version to deploy'
         required: true
         type: string
-    outputs:
-      website_bucket_name:
-        description: 'S3 bucket name for the deployed website'
-        value: ${{ jobs.deploy.outputs.website_bucket_name }}
 
 permissions:
   contents: write
@@ -63,8 +59,8 @@ jobs:
       - name: Extract deployment bundle
         run: |
           # Pull and extract bundle
-          docker pull ghcr.io/${{ env.BUNDLE_IMAGE }}:${{ steps.bundle.outputs.bundle_version }}
-          docker create --name bundle-extract ghcr.io/${{ env.BUNDLE_IMAGE }}:${{ steps.bundle.outputs.bundle_version }} /bin/sh
+          docker pull ghcr.io/${{ env.BUNDLE_IMAGE }}:${{ inputs.bundle_version }}
+          docker create --name bundle-extract ghcr.io/${{ env.BUNDLE_IMAGE }}:${{ inputs.bundle_version }} /bin/sh
           docker cp bundle-extract:/deployment/ ./deployment/
           docker rm bundle-extract
           
@@ -73,12 +69,12 @@ jobs:
       - name: Validate bundle version
         run: |
           # Verify bundle metadata matches expected version
-          BUNDLE_VERSION_LABEL=$(docker inspect ghcr.io/${{ env.BUNDLE_IMAGE }}:${{ steps.bundle.outputs.bundle_version }} \
+          BUNDLE_VERSION_LABEL=$(docker inspect ghcr.io/${{ env.BUNDLE_IMAGE }}:${{ inputs.bundle_version }} \
             | jq -r '.[0].Config.Labels["ridelines.bundle.version"]')
           
-          if [ "$BUNDLE_VERSION_LABEL" != "${{ steps.bundle.outputs.bundle_version }}" ]; then
+          if [ "$BUNDLE_VERSION_LABEL" != "${{ inputs.bundle_version }}" ]; then
             echo "Error: Bundle version mismatch"
-            echo "Expected: ${{ steps.bundle.outputs.bundle_version }}"
+            echo "Expected: ${{ inputs.bundle_version }}"
             echo "Found: $BUNDLE_VERSION_LABEL"
             exit 1
           fi
@@ -107,7 +103,7 @@ jobs:
       - name: Tag bundle with environment
         run: |
           # Tag the bundle as current for this environment
-          docker tag ghcr.io/${{ env.BUNDLE_IMAGE }}:${{ steps.bundle.outputs.bundle_version }} \
+          docker tag ghcr.io/${{ env.BUNDLE_IMAGE }}:${{ inputs.bundle_version }} \
             ghcr.io/${{ env.BUNDLE_IMAGE }}:${{ inputs.environment }}-current
           
           docker push ghcr.io/${{ env.BUNDLE_IMAGE }}:${{ inputs.environment }}-current
@@ -117,7 +113,7 @@ jobs:
           DEPLOYMENT_TIME=$(date -Iseconds)
           echo "## ${{ inputs.environment == 'prod' && 'Production' || 'Development' }} Deployment Summary" >> $GITHUB_STEP_SUMMARY
           echo "✅ **Status:** Successfully deployed" >> $GITHUB_STEP_SUMMARY
-          echo "📦 **Bundle:** ${{ steps.bundle.outputs.bundle_version }}" >> $GITHUB_STEP_SUMMARY
+          echo "📦 **Bundle:** ${{ inputs.bundle_version }}" >> $GITHUB_STEP_SUMMARY
           echo "🪣 **S3 Bucket:** ${{ steps.apply.outputs.website_bucket_name }}" >> $GITHUB_STEP_SUMMARY
           echo "🏷️ **Tagged as:** ${{ inputs.environment }}-current" >> $GITHUB_STEP_SUMMARY
           echo "🕰️ **Deployed at:** ${DEPLOYMENT_TIME}" >> $GITHUB_STEP_SUMMARY
