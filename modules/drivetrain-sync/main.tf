@@ -129,28 +129,6 @@ resource "aws_iam_role_policy" "sync_lambda_s3_activities" {
   })
 }
 
-# IAM policy for CloudFront invalidation
-resource "aws_iam_role_policy" "sync_lambda_cloudfront" {
-  name = "${var.project_name}-${var.environment}-sync-cloudfront"
-  role = aws_iam_role.sync_lambda_role.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "cloudfront:CreateInvalidation",
-          "cloudfront:GetDistribution"
-        ]
-        Resource = [
-          var.cloudfront_distribution_arn
-        ]
-      }
-    ]
-  })
-}
-
 # IAM policy for cross-module access to users table (read user access tokens)
 resource "aws_iam_role_policy" "sync_lambda_users_table" {
   name = "${var.project_name}-${var.environment}-sync-users-table"
@@ -198,11 +176,10 @@ resource "aws_lambda_function" "sync_lambda" {
 
   environment {
     variables = {
-      S3_BUCKET                  = aws_s3_bucket.geojson_storage.bucket
-      ACTIVITIES_S3_BUCKET       = var.activities_bucket_name
-      CLOUDFRONT_DISTRIBUTION_ID = var.cloudfront_distribution_id
-      USERS_TABLE_NAME           = var.users_table_name
-      RUST_LOG                   = "info"
+      S3_BUCKET            = aws_s3_bucket.geojson_storage.bucket
+      ACTIVITIES_S3_BUCKET = var.activities_bucket_name
+      USERS_TABLE_NAME     = var.users_table_name
+      RUST_LOG             = "info"
     }
   }
 
