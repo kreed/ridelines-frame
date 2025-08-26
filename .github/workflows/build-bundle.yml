@@ -58,10 +58,11 @@ jobs:
           echo "Downloading latest drivetrain artifacts..."
           mkdir -p artifacts/drivetrain
           
-          # Pull and extract lambda container (latest) - now contains 3 separate Lambda functions
+          # Pull and extract lambda container (latest) - now contains 4 separate Lambda functions
           docker pull ghcr.io/kreed/ridelines-drivetrain:latest
           docker create --name lambda-extract ghcr.io/kreed/ridelines-drivetrain:latest /bin/sh
           docker cp lambda-extract:/auth-lambda-package.zip artifacts/drivetrain/auth-lambda.zip
+          docker cp lambda-extract:/auth-verify-lambda-package.zip artifacts/drivetrain/auth-verify-lambda.zip
           docker cp lambda-extract:/user-lambda-package.zip artifacts/drivetrain/user-lambda.zip
           docker cp lambda-extract:/sync-lambda-package.zip artifacts/drivetrain/sync-lambda.zip
           docker cp lambda-extract:/ridelines-api.yaml artifacts/drivetrain/ridelines-api.yaml
@@ -141,6 +142,11 @@ jobs:
             exit 1
           fi
           
+          if [ ! -f "artifacts/drivetrain/auth-verify-lambda.zip" ]; then
+            echo "Error: Drivetrain auth-verify-lambda.zip not found"
+            exit 1
+          fi
+          
           if [ ! -f "artifacts/drivetrain/user-lambda.zip" ]; then
             echo "Error: Drivetrain user-lambda.zip not found"
             exit 1
@@ -175,6 +181,7 @@ jobs:
           
           # Verify zip files are valid
           unzip -t artifacts/drivetrain/auth-lambda.zip > /dev/null || { echo "Error: Invalid auth-lambda.zip"; exit 1; }
+          unzip -t artifacts/drivetrain/auth-verify-lambda.zip > /dev/null || { echo "Error: Invalid auth-verify-lambda.zip"; exit 1; }
           unzip -t artifacts/drivetrain/user-lambda.zip > /dev/null || { echo "Error: Invalid user-lambda.zip"; exit 1; }
           unzip -t artifacts/drivetrain/sync-lambda.zip > /dev/null || { echo "Error: Invalid sync-lambda.zip"; exit 1; }
           unzip -t artifacts/drivetrain/layer.zip > /dev/null || { echo "Error: Invalid layer.zip"; exit 1; }
