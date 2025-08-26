@@ -21,6 +21,10 @@ permissions:
   id-token: write
   actions: write
 
+concurrency:
+  group: prod-deployment
+  cancel-in-progress: true
+
 jobs:
   stage:
     name: Stage Production Release

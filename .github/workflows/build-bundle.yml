@@ -22,6 +22,10 @@ permissions:
   packages: write
   actions: write
 
+concurrency:
+  group: bundle-build
+  cancel-in-progress: true
+
 env:
   REGISTRY: ghcr.io
   BUNDLE_IMAGE: kreed/ridelines-bundle

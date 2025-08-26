@@ -16,6 +16,10 @@ permissions:
   id-token: write
   actions: write
 
+concurrency:
+  group: dev-deployment
+  cancel-in-progress: true
+
 jobs:
   stage:
     name: Stage Development Release
