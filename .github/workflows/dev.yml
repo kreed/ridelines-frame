@@ -21,7 +21,7 @@ jobs:
     name: Stage Development Release
     uses: ./.github/workflows/base-stage.yml
     with:
-      environment: dev-staging
+      environment: dev
       bundle_version: ${{ inputs.bundle_version }}
     secrets: inherit
 

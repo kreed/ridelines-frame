@@ -26,7 +26,7 @@ jobs:
     name: Stage Production Release
     uses: ./.github/workflows/base-stage.yml
     with:
-      environment: prod-staging
+      environment: prod
       bundle_version: ${{ inputs.bundle_version }}
     secrets: inherit
 
