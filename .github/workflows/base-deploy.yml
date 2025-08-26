@@ -11,6 +11,10 @@ on:
         description: 'Bundle version to deploy'
         required: true
         type: string
+    outputs:
+      website_bucket_name:
+        description: 'S3 bucket name for the deployed website'
+        value: ${{ jobs.deploy.outputs.website_bucket_name }}
 
 permissions:
   contents: write
@@ -51,43 +55,17 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Get release information
-        id: release
-        run: |
-          # Use bundle version from input
-          BUNDLE_VERSION="${{ inputs.bundle_version }}"
-          echo "bundle_version=${BUNDLE_VERSION}" >> $GITHUB_OUTPUT
-          
-          # Build release name
-          RELEASE_NAME="${{ inputs.environment }}-${BUNDLE_VERSION}"
-          echo "release_name=${RELEASE_NAME}" >> $GITHUB_OUTPUT
-          
-          # Get release details and verify this is a staging release
-          RELEASE_INFO=$(gh release view "${RELEASE_NAME}" --json body,assets)
-          IS_PRERELEASE=$(gh release view "${RELEASE_NAME}" --json isPrerelease --jq '.isPrerelease')
-          if [ "$IS_PRERELEASE" != "true" ]; then
-            echo "Error: Release ${RELEASE_NAME} is not a staging release"
-            exit 1
-          fi
-          
-          echo "Bundle version: ${BUNDLE_VERSION}"
-          echo "Release name: ${RELEASE_NAME}"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Download OpenTofu plan
-        run: |
-          gh release download "${{ steps.release.outputs.release_name }}" \
-            --pattern "opentofu-${{ inputs.environment }}.tfplan" \
-            --dir .
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Download OpenTofu plan artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: opentofu-plan-${{ inputs.environment }}-${{ inputs.bundle_version }}
+          path: .
 
       - name: Extract deployment bundle
         run: |
           # Pull and extract bundle
-          docker pull ghcr.io/${{ env.BUNDLE_IMAGE }}:${{ steps.release.outputs.bundle_version }}
-          docker create --name bundle-extract ghcr.io/${{ env.BUNDLE_IMAGE }}:${{ steps.release.outputs.bundle_version }} /bin/sh
+          docker pull ghcr.io/${{ env.BUNDLE_IMAGE }}:${{ steps.bundle.outputs.bundle_version }}
+          docker create --name bundle-extract ghcr.io/${{ env.BUNDLE_IMAGE }}:${{ steps.bundle.outputs.bundle_version }} /bin/sh
           docker cp bundle-extract:/deployment/ ./deployment/
           docker rm bundle-extract
           
@@ -96,12 +74,12 @@ jobs:
       - name: Validate bundle version
         run: |
           # Verify bundle metadata matches expected version
-          BUNDLE_VERSION_LABEL=$(docker inspect ghcr.io/${{ env.BUNDLE_IMAGE }}:${{ steps.release.outputs.bundle_version }} \
+          BUNDLE_VERSION_LABEL=$(docker inspect ghcr.io/${{ env.BUNDLE_IMAGE }}:${{ steps.bundle.outputs.bundle_version }} \
             | jq -r '.[0].Config.Labels["ridelines.bundle.version"]')
           
-          if [ "$BUNDLE_VERSION_LABEL" != "${{ steps.release.outputs.bundle_version }}" ]; then
+          if [ "$BUNDLE_VERSION_LABEL" != "${{ steps.bundle.outputs.bundle_version }}" ]; then
             echo "Error: Bundle version mismatch"
-            echo "Expected: ${{ steps.release.outputs.bundle_version }}"
+            echo "Expected: ${{ steps.bundle.outputs.bundle_version }}"
             echo "Found: $BUNDLE_VERSION_LABEL"
             exit 1
           fi
@@ -130,82 +108,21 @@ jobs:
       - name: Tag bundle with environment
         run: |
           # Tag the bundle as current for this environment
-          docker tag ghcr.io/${{ env.BUNDLE_IMAGE }}:${{ steps.release.outputs.bundle_version }} \
+          docker tag ghcr.io/${{ env.BUNDLE_IMAGE }}:${{ steps.bundle.outputs.bundle_version }} \
             ghcr.io/${{ env.BUNDLE_IMAGE }}:${{ inputs.environment }}-current
           
           docker push ghcr.io/${{ env.BUNDLE_IMAGE }}:${{ inputs.environment }}-current
 
-      - name: Update release to deployed
-        run: |
-          # Update release from prerelease to full release (deployed)
-          gh release edit "${{ steps.release.outputs.release_name }}" \
-            --prerelease=false \
-            --latest=${{ inputs.environment == 'prod' }} \
-            --title "${{ inputs.environment == 'prod' && 'Production' || 'Development' }} Deployment: ${{ inputs.bundle_version }}"
-          
-          # Update release notes to show deployed status
-          CURRENT_NOTES=$(gh release view "${{ steps.release.outputs.release_name }}" --json body --jq '.body')
-          DEPLOYMENT_TIME=$(date -Iseconds)
-          
-          # Update status and add deployment info
-          UPDATED_NOTES=$(echo "$CURRENT_NOTES" | sed 's/\*\*Status:\*\* 🟡 Staged/\*\*Status:\*\* ✅ Deployed/')
-          UPDATED_NOTES="${UPDATED_NOTES}
-          
-          ### Deployment Information
-          - **Deployed at**: ${DEPLOYMENT_TIME}
-          - **Deployment workflow**: [Run #${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
-          - **Deployed by**: @${{ github.actor }}"
-          
-          gh release edit "${{ steps.release.outputs.release_name }}" \
-            --notes "$UPDATED_NOTES"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Clean up old staging releases
-        run: |
-          # Delete staging releases older than 7 days for this environment
-          CUTOFF_DATE=$(date -d '7 days ago' +%s)
-          
-          gh release list --limit 100 --json name,tagName,isPrerelease,createdAt \
-            --jq '.[] | select(.isPrerelease == true and (.name | startswith("${{ inputs.environment }}-")))' | \
-          while IFS= read -r release; do
-            RELEASE_NAME=$(echo "$release" | jq -r '.name')
-            CREATED_AT=$(echo "$release" | jq -r '.createdAt')
-            CREATED_TIMESTAMP=$(date -d "$CREATED_AT" +%s)
-            
-            if [ "$CREATED_TIMESTAMP" -lt "$CUTOFF_DATE" ]; then
-              echo "Deleting old staging release: $RELEASE_NAME"
-              gh release delete "$RELEASE_NAME" --yes
-            fi
-          done
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Trigger prod staging
-        if: inputs.environment == 'dev'
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            await github.rest.actions.createWorkflowDispatch({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: 'prod-stage.yml',
-              ref: context.ref,
-              inputs: {
-                bundle_version: '${{ inputs.bundle_version }}'
-              }
-            });
-            console.log('Production staging triggered with bundle version: ${{ inputs.bundle_version }}');
-
       - name: Deployment summary
         run: |
-          echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
-          echo "✅ Successfully deployed to ${{ inputs.environment }}" >> $GITHUB_STEP_SUMMARY
-          echo "📦 Bundle: ${{ steps.release.outputs.bundle_version }}" >> $GITHUB_STEP_SUMMARY
-          echo "🪣 S3 Bucket: ${{ steps.apply.outputs.website_bucket_name }}" >> $GITHUB_STEP_SUMMARY
-          echo "🏷️ Tagged as: ${{ inputs.environment }}-current" >> $GITHUB_STEP_SUMMARY
-          echo "📋 Release: [${{ steps.release.outputs.release_name }}](${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ steps.release.outputs.release_name }})" >> $GITHUB_STEP_SUMMARY
+          DEPLOYMENT_TIME=$(date -Iseconds)
+          echo "## ${{ inputs.environment == 'prod' && 'Production' || 'Development' }} Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "✅ **Status:** Successfully deployed" >> $GITHUB_STEP_SUMMARY
+          echo "📦 **Bundle:** ${{ steps.bundle.outputs.bundle_version }}" >> $GITHUB_STEP_SUMMARY
+          echo "🪣 **S3 Bucket:** ${{ steps.apply.outputs.website_bucket_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "🏷️ **Tagged as:** ${{ inputs.environment }}-current" >> $GITHUB_STEP_SUMMARY
+          echo "🕰️ **Deployed at:** ${DEPLOYMENT_TIME}" >> $GITHUB_STEP_SUMMARY
+          echo "👤 **Deployed by:** @${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
           if [ "${{ inputs.environment }}" == "dev" ]; then
             echo "🚀 Production staging triggered" >> $GITHUB_STEP_SUMMARY
           fi

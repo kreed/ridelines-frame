@@ -1,0 +1,41 @@
+name: Deploy to Production
+
+run-name: ${{ inputs.stage_only == 'true' && 'Stage prod' || 'Deploy prod' }} - ${{ inputs.bundle_version }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      bundle_version:
+        description: 'Bundle version to deploy to production'
+        required: true
+        type: string
+      stage_only:
+        description: 'Only stage the release (do not deploy)'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  packages: read
+  id-token: write
+  actions: write
+
+jobs:
+  stage:
+    name: Stage Production Release
+    uses: ./.github/workflows/base-stage.yml
+    with:
+      environment: prod-staging
+      bundle_version: ${{ inputs.bundle_version }}
+    secrets: inherit
+
+  deploy:
+    name: Deploy to Production
+    needs: [stage]
+    uses: ./.github/workflows/base-deploy.yml
+    with:
+      environment: prod
+      bundle_version: ${{ inputs.bundle_version }}
+    secrets: inherit
+    # Production environment protection rules will handle approval

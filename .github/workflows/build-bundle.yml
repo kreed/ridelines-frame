@@ -206,7 +206,7 @@ jobs:
             ridelines.commit.drivetrain=${{ steps.commits.outputs.drivetrain_commit }}
             ridelines.commit.tippecanoe=${{ steps.commits.outputs.tippecanoe_commit }}
 
-      - name: Trigger dev staging
+      - name: Trigger dev deployment
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -214,20 +214,20 @@ jobs:
             await github.rest.actions.createWorkflowDispatch({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              workflow_id: 'dev-stage.yml',
+              workflow_id: 'dev.yml',
               ref: context.ref,
               inputs: {
                 bundle_version: '${{ steps.bundle.outputs.bundle_version }}'
               }
             });
-            console.log('Dev staging triggered with bundle version: ${{ steps.bundle.outputs.bundle_version }}');
+            console.log('Dev deployment triggered with bundle version: ${{ steps.bundle.outputs.bundle_version }}');
 
       - name: Bundle summary
         run: |
           echo "## Deployment Bundle Created" >> $GITHUB_STEP_SUMMARY
           echo "✅ Bundle version: ${{ steps.bundle.outputs.bundle_version }}" >> $GITHUB_STEP_SUMMARY
           echo "📦 Container: ${{ env.REGISTRY }}/${{ env.BUNDLE_IMAGE }}:${{ steps.bundle.outputs.bundle_version }}" >> $GITHUB_STEP_SUMMARY
-          echo "🚀 Dev staging triggered" >> $GITHUB_STEP_SUMMARY
+          echo "🚀 Dev deployment triggered" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Component Commits" >> $GITHUB_STEP_SUMMARY
           echo "- **Frame**: [${{ steps.commits.outputs.frame_commit }}](https://github.com/kreed/ridelines-frame/commit/${{ steps.commits.outputs.frame_commit }})" >> $GITHUB_STEP_SUMMARY

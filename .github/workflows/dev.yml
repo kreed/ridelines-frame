@@ -1,0 +1,56 @@
+name: Deploy to Development
+
+run-name: Deploy dev - ${{ inputs.bundle_version }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      bundle_version:
+        description: 'Bundle version to deploy to development'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  packages: read
+  id-token: write
+  actions: write
+
+jobs:
+  stage:
+    name: Stage Development Release
+    uses: ./.github/workflows/base-stage.yml
+    with:
+      environment: dev-staging
+      bundle_version: ${{ inputs.bundle_version }}
+    secrets: inherit
+
+  deploy:
+    name: Deploy to Development
+    needs: stage
+    uses: ./.github/workflows/base-deploy.yml
+    with:
+      environment: dev
+      bundle_version: ${{ inputs.bundle_version }}
+    secrets: inherit
+
+  trigger-prod-staging:
+    name: Trigger Prod Deployment
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger production staging
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'prod.yml',
+              ref: context.ref,
+              inputs: {
+                bundle_version: '${{ inputs.bundle_version }}',
+              }
+            });
+            console.log('Production deployment triggered with bundle version: ${{ inputs.bundle_version }}');
