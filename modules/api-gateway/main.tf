@@ -97,73 +97,17 @@ resource "aws_lambda_permission" "user_lambda_permission" {
   source_arn    = "${aws_api_gateway_rest_api.api.execution_arn}/*/*"
 }
 
-# Create /openapi.yaml endpoint
-resource "aws_api_gateway_resource" "openapi" {
-  rest_api_id = aws_api_gateway_rest_api.api.id
-  parent_id   = aws_api_gateway_rest_api.api.root_resource_id
-  path_part   = "openapi.yaml"
-}
-
-resource "aws_api_gateway_method" "openapi_get" {
-  rest_api_id   = aws_api_gateway_rest_api.api.id
-  resource_id   = aws_api_gateway_resource.openapi.id
-  http_method   = "GET"
-  authorization = "NONE"
-}
-
-resource "aws_api_gateway_method_response" "openapi_200" {
-  rest_api_id = aws_api_gateway_rest_api.api.id
-  resource_id = aws_api_gateway_resource.openapi.id
-  http_method = aws_api_gateway_method.openapi_get.http_method
-  status_code = "200"
-
-  response_parameters = {
-    "method.response.header.Content-Type" = true
-  }
-}
-
-resource "aws_api_gateway_integration" "openapi" {
-  rest_api_id = aws_api_gateway_rest_api.api.id
-  resource_id = aws_api_gateway_resource.openapi.id
-  http_method = aws_api_gateway_method.openapi_get.http_method
-  type        = "MOCK"
-}
-
-resource "aws_api_gateway_integration_response" "openapi_200" {
-  rest_api_id = aws_api_gateway_rest_api.api.id
-  resource_id = aws_api_gateway_resource.openapi.id
-  http_method = aws_api_gateway_method.openapi_get.http_method
-  status_code = aws_api_gateway_method_response.openapi_200.status_code
-
-  response_parameters = {
-    "method.response.header.Content-Type" = "'application/x-yaml'"
-  }
-
-  response_templates = {
-    "application/x-yaml" = file(var.openapi_spec_path)
-  }
-
-  depends_on = [aws_api_gateway_integration.openapi]
-}
-
 # API Gateway deployment
 resource "aws_api_gateway_deployment" "api_deployment" {
   rest_api_id = aws_api_gateway_rest_api.api.id
 
   triggers = {
-    redeployment = sha1(jsonencode([
-      local.updated_spec,
-      aws_api_gateway_integration_response.openapi_200.response_templates
-    ]))
+    redeployment = sha1(jsonencode(local.updated_spec))
   }
 
   lifecycle {
     create_before_destroy = true
   }
-
-  depends_on = [
-    aws_api_gateway_integration_response.openapi_200
-  ]
 }
 
 # API Gateway stage
