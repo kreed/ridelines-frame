@@ -58,10 +58,12 @@ module "website" {
 module "drivetrain_users" {
   source = "../../modules/drivetrain-users"
 
-  project_name = var.project_name
-  environment  = local.environment
-  frontend_url = "https://${var.domain_name}"
-  tags         = local.common_tags
+  project_name           = var.project_name
+  environment            = local.environment
+  frontend_url           = "https://${var.domain_name}"
+  cloudfront_key_pair_id = module.website.cloudfront_key_pair_id
+  cloudfront_private_key = module.website.cloudfront_private_key
+  tags                   = local.common_tags
 }
 
 # Auth module (OAuth infrastructure)

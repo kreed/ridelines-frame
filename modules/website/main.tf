@@ -229,6 +229,27 @@ data "aws_cloudfront_response_headers_policy" "security_headers" {
   name = "Managed-SecurityHeadersPolicy"
 }
 
+
+# Generate RSA private key for CloudFront signing
+resource "tls_private_key" "cloudfront_signing" {
+  algorithm = "RSA"
+  rsa_bits  = 2048
+}
+
+# CloudFront public key for signed URLs
+resource "aws_cloudfront_public_key" "activities" {
+  name        = "${var.domain_name}-activities-key"
+  comment     = "Public key for activities signed URLs"
+  encoded_key = tls_private_key.cloudfront_signing.public_key_pem
+}
+
+# CloudFront key group for signed URLs
+resource "aws_cloudfront_key_group" "activities" {
+  name    = "${var.domain_name}-activities-key-group"
+  comment = "Key group for activities signed URLs"
+  items   = [aws_cloudfront_public_key.activities.id]
+}
+
 # CloudFront Origin Access Control
 resource "aws_cloudfront_origin_access_control" "website" {
   name                              = "${var.domain_name}-website-oac"
@@ -293,7 +314,7 @@ resource "aws_cloudfront_distribution" "main" {
     response_headers_policy_id = data.aws_cloudfront_response_headers_policy.security_headers.id
   }
 
-  # Behavior for activities data (enable caching)
+  # Behavior for activities data (with presigned URL requirement)
   ordered_cache_behavior {
     path_pattern           = "/activities/*"
     allowed_methods        = ["GET", "HEAD", "OPTIONS"]
@@ -304,6 +325,9 @@ resource "aws_cloudfront_distribution" "main" {
 
     cache_policy_id            = data.aws_cloudfront_cache_policy.caching_optimized.id
     response_headers_policy_id = data.aws_cloudfront_response_headers_policy.security_headers.id
+
+    # Require signed URLs for access
+    trusted_key_groups = [aws_cloudfront_key_group.activities.id]
   }
 
   restrictions {

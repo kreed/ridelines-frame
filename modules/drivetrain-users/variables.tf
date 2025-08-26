@@ -24,3 +24,15 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "cloudfront_key_pair_id" {
+  description = "CloudFront key pair ID for signed URLs"
+  type        = string
+  sensitive   = true
+}
+
+variable "cloudfront_private_key" {
+  description = "CloudFront private key for signed URLs"
+  type        = string
+  sensitive   = true
+}
