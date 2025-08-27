@@ -289,6 +289,47 @@ resource "aws_iam_role" "auth_verify_lambda_role" {
   tags = var.tags
 }
 
+# Separate IAM role for API Gateway to invoke the auth verify Lambda
+resource "aws_iam_role" "api_gateway_authorizer_role" {
+  name = "${var.project_name}-${var.environment}-api-gateway-authorizer-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "apigateway.amazonaws.com"
+        }
+      }
+    ]
+  })
+
+  tags = var.tags
+}
+
+# IAM policy for API Gateway to invoke the auth verify Lambda
+resource "aws_iam_role_policy" "api_gateway_authorizer_lambda_invoke" {
+  name = "${var.project_name}-${var.environment}-authorizer-invoke"
+  role = aws_iam_role.api_gateway_authorizer_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "lambda:InvokeFunction"
+        ]
+        Resource = [
+          aws_lambda_function.auth_verify_lambda.arn
+        ]
+      }
+    ]
+  })
+}
+
 # Basic Lambda execution policy for auth verify
 resource "aws_iam_role_policy_attachment" "auth_verify_lambda_basic_execution" {
   role       = aws_iam_role.auth_verify_lambda_role.name

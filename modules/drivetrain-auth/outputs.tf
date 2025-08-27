@@ -43,9 +43,9 @@ output "auth_verify_lambda_function_name" {
   value       = aws_lambda_function.auth_verify_lambda.function_name
 }
 
-output "auth_verify_lambda_role_arn" {
-  description = "ARN of the auth verify Lambda execution role"
-  value       = aws_iam_role.auth_verify_lambda_role.arn
+output "api_gateway_authorizer_role_arn" {
+  description = "ARN of the API Gateway authorizer role for invoking auth verify Lambda"
+  value       = aws_iam_role.api_gateway_authorizer_role.arn
 }
 
 output "oauth_credentials_secret_arn" {

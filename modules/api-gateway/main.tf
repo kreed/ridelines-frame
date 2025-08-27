@@ -9,7 +9,7 @@ locals {
     auth_lambda_arn             = var.auth_lambda_arn
     user_lambda_arn             = var.user_lambda_arn
     auth_verify_lambda_arn      = var.auth_verify_lambda_arn
-    auth_verify_lambda_role_arn = var.auth_verify_lambda_role_arn
+    auth_verify_lambda_role_arn = var.api_gateway_authorizer_role_arn
     domain_name                 = var.domain_name
     frontend_origin             = var.frontend_origin
   })

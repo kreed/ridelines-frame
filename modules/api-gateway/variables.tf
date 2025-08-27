@@ -50,8 +50,8 @@ variable "auth_verify_lambda_arn" {
   type        = string
 }
 
-variable "auth_verify_lambda_role_arn" {
-  description = "ARN of the auth verify Lambda execution role"
+variable "api_gateway_authorizer_role_arn" {
+  description = "ARN of the API Gateway authorizer role for invoking auth verify Lambda"
   type        = string
 }
 
