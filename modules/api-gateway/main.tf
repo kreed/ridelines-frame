@@ -211,11 +211,24 @@ resource "aws_api_gateway_base_path_mapping" "api_mapping" {
   domain_name = aws_api_gateway_domain_name.api_domain.domain_name
 }
 
-# Route53 record for the API domain
+# Route53 record for the API domain (IPv4)
 resource "aws_route53_record" "api_domain_record" {
   zone_id = var.route53_zone_id
   name    = var.domain_name
   type    = "A"
+
+  alias {
+    name                   = aws_api_gateway_domain_name.api_domain.regional_domain_name
+    zone_id                = aws_api_gateway_domain_name.api_domain.regional_zone_id
+    evaluate_target_health = false
+  }
+}
+
+# Route53 record for the API domain (IPv6)
+resource "aws_route53_record" "api_domain_record_ipv6" {
+  zone_id = var.route53_zone_id
+  name    = var.domain_name
+  type    = "AAAA"
 
   alias {
     name                   = aws_api_gateway_domain_name.api_domain.regional_domain_name
