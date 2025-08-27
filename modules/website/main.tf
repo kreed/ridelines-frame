@@ -92,7 +92,7 @@ resource "aws_s3_bucket_cors_configuration" "website" {
   cors_rule {
     allowed_headers = ["*"]
     allowed_methods = ["GET", "HEAD"]
-    allowed_origins = ["https://${var.domain_name}"]
+    allowed_origins = ["https://${var.domain_name}", "http://localhost:5173"]
     expose_headers  = ["ETag"]
     max_age_seconds = 3000
   }
@@ -150,7 +150,7 @@ resource "aws_s3_bucket_cors_configuration" "activities" {
   cors_rule {
     allowed_headers = ["*"]
     allowed_methods = ["GET", "HEAD"]
-    allowed_origins = ["https://${var.domain_name}"]
+    allowed_origins = ["https://${var.domain_name}", "http://localhost:5173"]
     expose_headers  = ["ETag", "Content-Type", "Content-Length"]
     max_age_seconds = 86400
   }
