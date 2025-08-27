@@ -238,14 +238,14 @@ resource "tls_private_key" "cloudfront_signing" {
 
 # CloudFront public key for signed URLs
 resource "aws_cloudfront_public_key" "activities" {
-  name        = "${var.domain_name}-activities-key"
+  name        = "${var.project_name}-${var.environment}-activities-key"
   comment     = "Public key for activities signed URLs"
   encoded_key = tls_private_key.cloudfront_signing.public_key_pem
 }
 
 # CloudFront key group for signed URLs
 resource "aws_cloudfront_key_group" "activities" {
-  name    = "${var.domain_name}-activities-key-group"
+  name    = "${var.project_name}-${var.environment}-activities-key-group"
   comment = "Key group for activities signed URLs"
   items   = [aws_cloudfront_public_key.activities.id]
 }
