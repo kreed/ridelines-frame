@@ -205,7 +205,7 @@ data "aws_cloudfront_cache_policy" "caching_disabled" {
 }
 
 data "aws_cloudfront_response_headers_policy" "cors_and_security_headers" {
-  name = "Managed-CORS-and-SecurityHeadersPolicy"
+  name = "Managed-CORS-with-preflight-and-SecurityHeadersPolicy"
 }
 
 
