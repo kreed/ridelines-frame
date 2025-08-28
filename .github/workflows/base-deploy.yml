@@ -96,10 +96,23 @@ jobs:
 
       - name: Deploy hub static assets to S3
         run: |
+          # Stage 1: Upload immutable assets first (_app, static assets)
+          aws s3 cp deployment/artifacts/hub/static-site/ \
+            s3://${{ steps.apply.outputs.website_bucket_name }}/ \
+            --recursive \
+            --exclude "*.html"
+          
+          # Stage 2: Upload HTML files (they reference the assets we just uploaded)
+          aws s3 cp deployment/artifacts/hub/static-site/ \
+            s3://${{ steps.apply.outputs.website_bucket_name }}/ \
+            --recursive \
+            --include "*.html" \
+            --exclude "*"
+          
+          # Stage 3: Clean up old files that are no longer needed
           aws s3 sync deployment/artifacts/hub/static-site/ \
             s3://${{ steps.apply.outputs.website_bucket_name }}/ \
-            --delete \
-            --exact-timestamps # default is to skip upload if file size matches. this can cause us to ignore hash changes for assets
+            --delete
 
       - name: Tag bundle with environment
         run: |
