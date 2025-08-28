@@ -87,16 +87,6 @@ resource "aws_s3_bucket_public_access_block" "website" {
   restrict_public_buckets = true
 }
 
-resource "aws_s3_bucket_cors_configuration" "website" {
-  bucket = aws_s3_bucket.website.id
-  cors_rule {
-    allowed_headers = ["*"]
-    allowed_methods = ["GET", "HEAD"]
-    allowed_origins = ["https://${var.domain_name}", "http://localhost:5173"]
-    expose_headers  = ["ETag"]
-    max_age_seconds = 3000
-  }
-}
 
 resource "aws_s3_bucket_lifecycle_configuration" "website" {
   bucket = aws_s3_bucket.website.id
@@ -143,17 +133,6 @@ resource "aws_s3_bucket_public_access_block" "activities" {
   block_public_policy     = true
   ignore_public_acls      = true
   restrict_public_buckets = true
-}
-
-resource "aws_s3_bucket_cors_configuration" "activities" {
-  bucket = aws_s3_bucket.activities.id
-  cors_rule {
-    allowed_headers = ["*"]
-    allowed_methods = ["GET", "HEAD"]
-    allowed_origins = ["https://${var.domain_name}", "http://localhost:5173"]
-    expose_headers  = ["ETag", "Content-Type", "Content-Length"]
-    max_age_seconds = 86400
-  }
 }
 
 resource "aws_s3_bucket_lifecycle_configuration" "activities" {
@@ -225,8 +204,8 @@ data "aws_cloudfront_cache_policy" "caching_disabled" {
   name = "Managed-CachingDisabled"
 }
 
-data "aws_cloudfront_response_headers_policy" "security_headers" {
-  name = "Managed-SecurityHeadersPolicy"
+data "aws_cloudfront_response_headers_policy" "cors_and_security_headers" {
+  name = "Managed-CORS-and-SecurityHeadersPolicy"
 }
 
 
@@ -332,7 +311,7 @@ resource "aws_cloudfront_distribution" "main" {
     viewer_protocol_policy = "redirect-to-https"
 
     cache_policy_id            = data.aws_cloudfront_cache_policy.caching_disabled.id
-    response_headers_policy_id = data.aws_cloudfront_response_headers_policy.security_headers.id
+    response_headers_policy_id = data.aws_cloudfront_response_headers_policy.cors_and_security_headers.id
 
     # Function to rewrite URLs to add .html extension
     function_association {
@@ -351,7 +330,7 @@ resource "aws_cloudfront_distribution" "main" {
     viewer_protocol_policy = "redirect-to-https"
 
     cache_policy_id            = data.aws_cloudfront_cache_policy.caching_optimized.id
-    response_headers_policy_id = data.aws_cloudfront_response_headers_policy.security_headers.id
+    response_headers_policy_id = data.aws_cloudfront_response_headers_policy.cors_and_security_headers.id
   }
 
   # Behavior for activities data (with presigned URL requirement)
@@ -364,7 +343,7 @@ resource "aws_cloudfront_distribution" "main" {
     viewer_protocol_policy = "redirect-to-https"
 
     cache_policy_id            = data.aws_cloudfront_cache_policy.caching_optimized.id
-    response_headers_policy_id = data.aws_cloudfront_response_headers_policy.security_headers.id
+    response_headers_policy_id = data.aws_cloudfront_response_headers_policy.cors_and_security_headers.id
 
     # Require signed URLs for access
     trusted_key_groups = [aws_cloudfront_key_group.activities.id]
