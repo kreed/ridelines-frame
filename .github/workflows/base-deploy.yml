@@ -106,8 +106,8 @@ jobs:
           aws s3 cp deployment/artifacts/hub/static-site/ \
             s3://${{ steps.apply.outputs.website_bucket_name }}/ \
             --recursive \
-            --include "*.html" \
-            --exclude "*"
+            --exclude "*" \
+            --include "*.html"
           
           # Stage 3: Clean up old files that are no longer needed
           aws s3 sync deployment/artifacts/hub/static-site/ \
