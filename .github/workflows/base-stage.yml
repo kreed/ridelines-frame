@@ -137,28 +137,28 @@ jobs:
           
           # Frame
           if [ "${{ steps.previous_commits.outputs.prev_frame_commit }}" = "${{ steps.bundle.outputs.frame_commit }}" ]; then
-            echo "- **Frame:** $(echo ${{ steps.bundle.outputs.frame_commit }} | cut -c1-7) (unchanged)" >> $GITHUB_STEP_SUMMARY
+            echo "- **Frame:** [$(echo ${{ steps.bundle.outputs.frame_commit }} | cut -c1-7)](https://github.com/kreed/ridelines-frame/commit/${{ steps.bundle.outputs.frame_commit }}) (unchanged)" >> $GITHUB_STEP_SUMMARY
           else
             echo "- **Frame:** [$(echo ${{ steps.previous_commits.outputs.prev_frame_commit }} | cut -c1-7)..$(echo ${{ steps.bundle.outputs.frame_commit }} | cut -c1-7)](https://github.com/kreed/ridelines-frame/compare/${{ steps.previous_commits.outputs.prev_frame_commit }}..${{ steps.bundle.outputs.frame_commit }})" >> $GITHUB_STEP_SUMMARY
           fi
           
           # Hub  
           if [ "${{ steps.previous_commits.outputs.prev_hub_commit }}" = "${{ steps.bundle.outputs.hub_commit }}" ]; then
-            echo "- **Hub:** $(echo ${{ steps.bundle.outputs.hub_commit }} | cut -c1-7) (unchanged)" >> $GITHUB_STEP_SUMMARY
+            echo "- **Hub:** [$(echo ${{ steps.bundle.outputs.hub_commit }} | cut -c1-7)](https://github.com/kreed/ridelines-hub/commit/${{ steps.bundle.outputs.hub_commit }}) (unchanged)" >> $GITHUB_STEP_SUMMARY
           else
             echo "- **Hub:** [$(echo ${{ steps.previous_commits.outputs.prev_hub_commit }} | cut -c1-7)..$(echo ${{ steps.bundle.outputs.hub_commit }} | cut -c1-7)](https://github.com/kreed/ridelines-hub/compare/${{ steps.previous_commits.outputs.prev_hub_commit }}..${{ steps.bundle.outputs.hub_commit }})" >> $GITHUB_STEP_SUMMARY
           fi
           
           # Drivetrain
           if [ "${{ steps.previous_commits.outputs.prev_drivetrain_commit }}" = "${{ steps.bundle.outputs.drivetrain_commit }}" ]; then
-            echo "- **Drivetrain:** $(echo ${{ steps.bundle.outputs.drivetrain_commit }} | cut -c1-7) (unchanged)" >> $GITHUB_STEP_SUMMARY
+            echo "- **Drivetrain:** [$(echo ${{ steps.bundle.outputs.drivetrain_commit }} | cut -c1-7)](https://github.com/kreed/ridelines-drivetrain/commit/${{ steps.bundle.outputs.drivetrain_commit }}) (unchanged)" >> $GITHUB_STEP_SUMMARY
           else
             echo "- **Drivetrain:** [$(echo ${{ steps.previous_commits.outputs.prev_drivetrain_commit }} | cut -c1-7)..$(echo ${{ steps.bundle.outputs.drivetrain_commit }} | cut -c1-7)](https://github.com/kreed/ridelines-drivetrain/compare/${{ steps.previous_commits.outputs.prev_drivetrain_commit }}..${{ steps.bundle.outputs.drivetrain_commit }})" >> $GITHUB_STEP_SUMMARY
           fi
           
           # Tippecanoe
           if [ "${{ steps.previous_commits.outputs.prev_tippecanoe_commit }}" = "${{ steps.bundle.outputs.tippecanoe_commit }}" ]; then
-            echo "- **Tippecanoe:** $(echo ${{ steps.bundle.outputs.tippecanoe_commit }} | cut -c1-7) (unchanged)" >> $GITHUB_STEP_SUMMARY
+            echo "- **Tippecanoe:** [$(echo ${{ steps.bundle.outputs.tippecanoe_commit }} | cut -c1-7)](https://github.com/felt/tippecanoe/commit/${{ steps.bundle.outputs.tippecanoe_commit }}) (unchanged)" >> $GITHUB_STEP_SUMMARY
           else  
             echo "- **Tippecanoe:** [$(echo ${{ steps.previous_commits.outputs.prev_tippecanoe_commit }} | cut -c1-7)..$(echo ${{ steps.bundle.outputs.tippecanoe_commit }} | cut -c1-7)](https://github.com/felt/tippecanoe/compare/${{ steps.previous_commits.outputs.prev_tippecanoe_commit }}..${{ steps.bundle.outputs.tippecanoe_commit }})" >> $GITHUB_STEP_SUMMARY
           fi
