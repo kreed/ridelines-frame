@@ -250,6 +250,41 @@ resource "aws_cloudfront_key_group" "activities" {
   items   = [aws_cloudfront_public_key.activities.id]
 }
 
+# CloudFront Function for URL rewriting
+resource "aws_cloudfront_function" "url_rewrite" {
+  name    = "${var.project_name}-${var.environment}-url-rewrite"
+  runtime = "cloudfront-js-2.0"
+  comment = "Rewrite URLs to add .html extension"
+  publish = true
+  code    = <<-EOT
+    function handler(event) {
+      var request = event.request;
+      var uri = request.uri;
+      
+      // Handle root path
+      if (uri === '/') {
+        request.uri = '/index.html';
+        return request;
+      }
+      
+      // Remove trailing slashes
+      uri = uri.replace(/\/+$/, '');
+      
+      // Get the last segment of the path
+      var segments = uri.split('/');
+      var lastSegment = segments[segments.length - 1];
+      
+      // Check if the last segment has a file extension (contains dot after last slash)
+      if (!lastSegment.includes('.')) {
+        // Add .html extension
+        request.uri = uri + '.html';
+      }
+      
+      return request;
+    }
+  EOT
+}
+
 # CloudFront Origin Access Control
 resource "aws_cloudfront_origin_access_control" "website" {
   name                              = "${var.domain_name}-website-oac"
@@ -283,11 +318,10 @@ resource "aws_cloudfront_distribution" "main" {
     origin_id                = "S3-${aws_s3_bucket.activities.bucket}"
   }
 
-  enabled             = true
-  is_ipv6_enabled     = true
-  default_root_object = "index.html"
-  aliases             = [var.domain_name]
-  price_class         = var.price_class
+  enabled         = true
+  is_ipv6_enabled = true
+  aliases         = [var.domain_name]
+  price_class     = var.price_class
 
   # Default behavior for website (no caching for root)
   default_cache_behavior {
@@ -299,6 +333,12 @@ resource "aws_cloudfront_distribution" "main" {
 
     cache_policy_id            = data.aws_cloudfront_cache_policy.caching_disabled.id
     response_headers_policy_id = data.aws_cloudfront_response_headers_policy.security_headers.id
+
+    # Function to rewrite URLs to add .html extension
+    function_association {
+      event_type   = "viewer-request"
+      function_arn = aws_cloudfront_function.url_rewrite.arn
+    }
   }
 
   # Behavior for _app assets (enable caching)
