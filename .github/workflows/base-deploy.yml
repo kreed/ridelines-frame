@@ -98,7 +98,8 @@ jobs:
         run: |
           aws s3 sync deployment/artifacts/hub/static-site/ \
             s3://${{ steps.apply.outputs.website_bucket_name }}/ \
-            --delete
+            --delete \
+            --exact-timestamps # default is to skip upload if file size matches. this can cause us to ignore hash changes for assets
 
       - name: Tag bundle with environment
         run: |
