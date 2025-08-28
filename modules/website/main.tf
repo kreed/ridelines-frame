@@ -382,11 +382,6 @@ resource "aws_cloudfront_distribution" "main" {
     minimum_protocol_version = "TLSv1.2_2021"
   }
 
-  custom_error_response {
-    error_code         = 404
-    response_code      = 200
-    response_page_path = "/index.html"
-  }
 
   dynamic "logging_config" {
     for_each = var.enable_logging ? [1] : []
