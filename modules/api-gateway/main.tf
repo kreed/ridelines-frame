@@ -195,7 +195,8 @@ resource "aws_api_gateway_domain_name" "api_domain" {
   regional_certificate_arn = aws_acm_certificate.api_certificate.arn
 
   endpoint_configuration {
-    types = ["REGIONAL"]
+    types           = ["REGIONAL"]
+    ip_address_type = "dualstack"
   }
 
   tags = {
