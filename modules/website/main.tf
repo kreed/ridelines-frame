@@ -359,9 +359,9 @@ resource "aws_cloudfront_distribution" "main" {
     }
   }
 
-  # Behavior for _app assets (enable caching)
+  # Behavior for immutable assets (enable caching)
   ordered_cache_behavior {
-    path_pattern           = "/_app/*"
+    path_pattern           = "/_app/immutable/*"
     allowed_methods        = ["GET", "HEAD", "OPTIONS"]
     cached_methods         = ["GET", "HEAD"]
     target_origin_id       = "S3-${aws_s3_bucket.website.bucket}"
