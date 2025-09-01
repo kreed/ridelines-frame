@@ -4,7 +4,7 @@ The infrastructure orchestration layer that powers the Ridelines GPS activity vi
 
 ## Overview
 
-Ridelines Frame is the deployment orchestration component that manages the entire Ridelines ecosystem. It creates immutable deployment bundles containing all artifacts and infrastructure code, implements a staging/production promotion workflow, and handles AWS infrastructure provisioning using OpenTofu/Terraform.
+Ridelines Frame is the deployment orchestration component that manages the entire [ridelines.xyz](https://ridelines.xyz) infrastructure. It creates immutable deployment bundles containing all artifacts and infrastructure code, implements a staging/production promotion workflow, and handles AWS infrastructure provisioning using OpenTofu/Terraform.
 
 ### Key Features
 
@@ -22,6 +22,7 @@ Ridelines Frame is the deployment orchestration component that manages the entir
 flowchart LR
     HUB[Hub Build Workflow] -.-> BUILD[Build Bundle]
     FRAME[Frame Commit] --> BUILD
+    CHAIN[Chainring Build Workflow] -.-> BUILD
     DRIVE[Drivetrain Build Workflow] -.-> BUILD
 
     BUILD --> DEV_STAGE[Dev Staging]
@@ -33,7 +34,7 @@ flowchart LR
 
 ### Deployment Flow
 
-1. **Component Updates**: Hub/Drivetrain build workflows or Frame repository commits trigger bundle build
+1. **Component Updates**: Hub/Chainring/Drivetrain build workflows or Frame repository commits trigger bundle build
 2. **Build Bundle** ([`build-bundle.yml`](.github/workflows/build-bundle.yml)): Combines all artifacts into an immutable deployment bundle
 3. **Dev Staging** ([`dev-stage.yml`](.github/workflows/dev-stage.yml)): Creates a prerelease with OpenTofu plan for development environment
 4. **Dev Deploy** ([`dev-deploy.yml`](.github/workflows/dev-deploy.yml)): Automatically deploys the staged release to development
@@ -43,7 +44,7 @@ flowchart LR
 ## Technology Stack
 
 - **Infrastructure as Code**: OpenTofu (Terraform) 1.8+
-- **Cloud Platform**: AWS (S3, CloudFront, Lambda, Route53, ACM)
+- **Cloud Platform**: AWS (S3, CloudFront, Lambda, Route53, ACM, DynamoDB)
 - **Container Registry**: GitHub Container Registry (ghcr.io)
 - **CI/CD**: GitHub Actions with reusable workflows
 - **Deployment Tracking**: GitHub Releases (prerelease = staging)
@@ -66,9 +67,8 @@ frame/
 │   └── prod/                 # Production environment
 └── modules/                  # Reusable infrastructure modules
     ├── website/              # Static website hosting
-    ├── drivetrain-auth/      # OAuth authentication infrastructure
-    ├── drivetrain-sync/      # Activity sync Lambda and GeoJSON storage
-    ├── drivetrain-users/     # User management Lambda and DynamoDB
+    ├── chainring/            # tRPC API backend with authentication
+    ├── drivetrain/           # Activity sync Lambda and storage
     ├── github-actions-iam/   # GitHub Actions OIDC permissions
     └── dns/                  # Domain and certificates
 ```
@@ -90,8 +90,9 @@ ghcr.io/kreed/ridelines-bundle:YYYYMMDD-{hash}
 ├── /deployment/
 │   ├── artifacts/
 │   │   ├── hub/static-site/      # Frontend build
+│   │   ├── chainring/lambda.zip  # tRPC API Lambda
 │   │   └── drivetrain/
-│   │       ├── lambda.zip        # Lambda function
+│   │       ├── lambda.zip        # Activity sync Lambda
 │   │       └── layer.zip         # Tippecanoe layer
 │   └── terraform/
 │       ├── environments/         # Environment configs
@@ -104,6 +105,7 @@ Each bundle includes metadata as container labels:
 - `ridelines.bundle.version`: Bundle version (YYYYMMDD-{hash})
 - `ridelines.commit.frame`: Frame repository commit
 - `ridelines.commit.hub`: Hub repository commit
+- `ridelines.commit.chainring`: Chainring repository commit
 - `ridelines.commit.drivetrain`: Drivetrain repository commit
 - `ridelines.commit.tippecanoe`: Tippecanoe commit
 
@@ -111,7 +113,7 @@ Each bundle includes metadata as container labels:
 
 ### Bundle Generation
 
-1. **Trigger**: Hub/Drivetrain containers published OR commits to Frame repository
+1. **Trigger**: Hub/Chainring/Drivetrain containers published OR commits to Frame repository
 2. **Build**: Creates deployment bundle with all artifacts and infrastructure
 3. **Version**: Tagged with `YYYYMMDD-{hash}` format
 4. **Metadata**: Labeled with component commit SHAs for traceability
@@ -315,6 +317,7 @@ tofu fmt -recursive
 ```bash
 # Check component container availability
 docker pull ghcr.io/kreed/ridelines-hub:latest
+docker pull ghcr.io/kreed/ridelines-chainring:latest
 docker pull ghcr.io/kreed/ridelines-drivetrain:latest
 
 # Verify container labels
@@ -348,7 +351,8 @@ This project is licensed under the MIT License - see the [LICENSE](../LICENSE) f
 
 ## Links
 
-- **Frontend (Hub)**: [github.com/kreed/ridelines-hub](https://github.com/kreed/ridelines-hub)
-- **Backend (Drivetrain)**: [github.com/kreed/ridelines-drivetrain](https://github.com/kreed/ridelines-drivetrain)
+- **Frontend (Hub)**: [ridelines-hub](https://github.com/kreed/ridelines-hub)
+- **Backend API (Chainring)**: [ridelines-chainring](https://github.com/kreed/ridelines-chainring)
+- **Backend Workflow (Drivetrain)**: [ridelines-drivetrain](https://github.com/kreed/ridelines-drivetrain)
 - **OpenTofu Documentation**: [opentofu.org](https://opentofu.org/)
 - **AWS Provider**: [Terraform AWS Provider](https://registry.terraform.io/providers/hashicorp/aws/latest)
