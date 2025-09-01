@@ -20,6 +20,9 @@ permissions:
 env:
   REGISTRY: ghcr.io
   BUNDLE_IMAGE: kreed/ridelines-bundle
+  TF_VAR_clerk_secret_key: ${{ secrets.clerk_secret_key }}
+  TF_VAR_clerk_jwt_key: ${{ secrets.clerk_jwt_key }}
+  TF_VAR_clerk_publishable_key: ${{ secrets.clerk_publishable_key }}
 
 jobs:
   deploy:
