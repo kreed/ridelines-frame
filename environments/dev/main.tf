@@ -61,7 +61,6 @@ module "chainring" {
 
   project_name                = var.project_name
   environment                 = local.environment
-  aws_region                  = var.aws_region
   clerk_secret_key            = var.clerk_secret_key
   clerk_publishable_key       = var.clerk_publishable_key
   clerk_jwt_key               = var.clerk_jwt_key

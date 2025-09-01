@@ -103,7 +103,6 @@ resource "aws_lambda_function" "chainring_lambda" {
       CLERK_SECRET_KEY      = var.clerk_secret_key
       CLERK_PUBLISHABLE_KEY = var.clerk_publishable_key
       CLERK_JWT_KEY         = var.clerk_jwt_key
-      AWS_REGION            = var.aws_region
     }
   }
 
