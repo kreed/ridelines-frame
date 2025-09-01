@@ -327,6 +327,13 @@ resource "aws_cloudfront_distribution" "main" {
     domain_name              = local.chainring_origin_domain
     origin_id                = "Lambda-Chainring"
     origin_access_control_id = aws_cloudfront_origin_access_control.chainring.id
+
+    custom_origin_config {
+      http_port              = 80
+      https_port             = 443
+      origin_protocol_policy = "https-only"
+      origin_ssl_protocols   = ["TLSv1.2"]
+    }
   }
 
   enabled         = true
