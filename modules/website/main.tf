@@ -13,8 +13,8 @@ locals {
   website_bucket_name    = "${var.project_name}-${var.environment}-website-assets"
   activities_bucket_name = "${var.project_name}-${var.environment}-activities"
 
-  # Extract domain from Lambda function URL (remove https:// prefix and any trailing slash)
-  chainring_origin_domain = trimspace(replace(replace(var.chainring_lambda_url, "https://", ""), "/", ""))
+  # Extract domain from Lambda function URL
+  chainring_origin_domain = regex("^https?://([^/]+)", var.chainring_lambda_url)[0]
 }
 
 # ACM Certificate for CloudFront (must be in us-east-1)
