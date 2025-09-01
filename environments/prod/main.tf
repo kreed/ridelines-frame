@@ -99,8 +99,8 @@ module "drivetrain_sync" {
   activities_bucket_arn       = "arn:aws:s3:::${module.website.activities_bucket_name}"
   cloudfront_distribution_id  = module.website.cloudfront_distribution_id
   cloudfront_distribution_arn = module.website.cloudfront_distribution_arn
-  users_table_name            = module.drivetrain_users.users_table_name
-  users_table_arn             = module.drivetrain_users.users_table_arn
+  users_table_name            = module.chainring.users_table_name
+  users_table_arn             = module.chainring.users_table_arn
   clerk_secret_key            = var.clerk_secret_key
   tags                        = local.common_tags
 }
