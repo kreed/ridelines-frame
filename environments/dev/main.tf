@@ -64,6 +64,7 @@ module "chainring" {
   clerk_secret_key            = var.clerk_secret_key
   clerk_publishable_key       = var.clerk_publishable_key
   clerk_jwt_key               = var.clerk_jwt_key
+  domain_name                 = var.domain_name
   allowed_origins             = ["https://${var.domain_name}", "http://localhost:5173"]
   cloudfront_distribution_arn = module.website.cloudfront_distribution_arn
   tags                        = local.common_tags

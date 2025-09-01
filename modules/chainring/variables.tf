@@ -41,6 +41,11 @@ variable "cloudfront_distribution_arn" {
   type        = string
 }
 
+variable "domain_name" {
+  description = "Domain name for the application"
+  type        = string
+}
+
 variable "tags" {
   description = "Resource tags"
   type        = map(string)
