@@ -3,14 +3,15 @@
  * 
  * This function:
  * 1. Validates that requests have a Bearer token in the Authorization header
- * 2. Removes the /trpc prefix from the URI so Lambda receives the correct path
+ * 2. Rewrites the Authorization header to auth-token (CloudFront strips Authorization)
+ * 3. Removes the /trpc prefix from the URI so Lambda receives the correct path
  */
 function handler(event) {
     var request = event.request;
     var headers = request.headers;
     
-    // Check for Authorization header with Bearer token
-    var authHeader = headers.authorization || headers.Authorization;
+    // Check for Authorization header with Bearer token (CloudFront converts to lowercase)
+    var authHeader = headers.authorization;
     
     if (!authHeader || !authHeader.value || !authHeader.value.startsWith('Bearer ')) {
         return {
@@ -21,6 +22,12 @@ function handler(event) {
             }
         };
     }
+    
+    // Rewrite Authorization header to auth-token (CloudFront strips Authorization header)
+    headers['auth-token'] = { value: authHeader.value };
+    
+    // Remove the original authorization header
+    delete headers.authorization;
     
     // Remove /trpc prefix from the URI
     // /trpc/user.query -> /user.query
