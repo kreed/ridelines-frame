@@ -20,6 +20,9 @@ permissions:
 env:
   REGISTRY: ghcr.io
   BUNDLE_IMAGE: kreed/ridelines-bundle
+  TF_VAR_clerk_secret_key: ${{ secrets.clerk_secret_key }}
+  TF_VAR_clerk_jwt_key: ${{ secrets.clerk_jwt_key }}
+  TF_VAR_clerk_publishable_key: ${{ secrets.clerk_publishable_key }}
 
 jobs:
   stage:
@@ -64,11 +67,13 @@ jobs:
           FRAME_COMMIT=$(docker inspect ghcr.io/${{ env.BUNDLE_IMAGE }}:${BUNDLE_VERSION} | jq -r '.[0].Config.Labels["ridelines.commit.frame"]')
           HUB_COMMIT=$(docker inspect ghcr.io/${{ env.BUNDLE_IMAGE }}:${BUNDLE_VERSION} | jq -r '.[0].Config.Labels["ridelines.commit.hub"]')
           DRIVETRAIN_COMMIT=$(docker inspect ghcr.io/${{ env.BUNDLE_IMAGE }}:${BUNDLE_VERSION} | jq -r '.[0].Config.Labels["ridelines.commit.drivetrain"]')
+          CHAINRING_COMMIT=$(docker inspect ghcr.io/${{ env.BUNDLE_IMAGE }}:${BUNDLE_VERSION} | jq -r '.[0].Config.Labels["ridelines.commit.chainring"]')
           TIPPECANOE_COMMIT=$(docker inspect ghcr.io/${{ env.BUNDLE_IMAGE }}:${BUNDLE_VERSION} | jq -r '.[0].Config.Labels["ridelines.commit.tippecanoe"]')
           
           echo "frame_commit=${FRAME_COMMIT}" >> $GITHUB_OUTPUT
           echo "hub_commit=${HUB_COMMIT}" >> $GITHUB_OUTPUT
           echo "drivetrain_commit=${DRIVETRAIN_COMMIT}" >> $GITHUB_OUTPUT
+          echo "chainring_commit=${CHAINRING_COMMIT}" >> $GITHUB_OUTPUT
           echo "tippecanoe_commit=${TIPPECANOE_COMMIT}" >> $GITHUB_OUTPUT
           
           echo "Bundle version: ${BUNDLE_VERSION}"
@@ -90,11 +95,13 @@ jobs:
             PREV_FRAME_COMMIT=$(echo "$LABELS" | jq -r '."ridelines.commit.frame" // "unknown"')
             PREV_HUB_COMMIT=$(echo "$LABELS" | jq -r '."ridelines.commit.hub" // "unknown"')
             PREV_DRIVETRAIN_COMMIT=$(echo "$LABELS" | jq -r '."ridelines.commit.drivetrain" // "unknown"')
+            PREV_CHAINRING_COMMIT=$(echo "$LABELS" | jq -r '."ridelines.commit.chainring" // "unknown"')
             PREV_TIPPECANOE_COMMIT=$(echo "$LABELS" | jq -r '."ridelines.commit.tippecanoe" // "unknown"')
             
             echo "prev_frame_commit=${PREV_FRAME_COMMIT}" >> $GITHUB_OUTPUT
             echo "prev_hub_commit=${PREV_HUB_COMMIT}" >> $GITHUB_OUTPUT  
             echo "prev_drivetrain_commit=${PREV_DRIVETRAIN_COMMIT}" >> $GITHUB_OUTPUT
+            echo "prev_chainring_commit=${PREV_CHAINRING_COMMIT}" >> $GITHUB_OUTPUT
             echo "prev_tippecanoe_commit=${PREV_TIPPECANOE_COMMIT}" >> $GITHUB_OUTPUT
             
             echo "Previous commits extracted successfully"
@@ -154,6 +161,13 @@ jobs:
             echo "- **Drivetrain:** [$(echo ${{ steps.bundle.outputs.drivetrain_commit }} | cut -c1-7)](https://github.com/kreed/ridelines-drivetrain/commit/${{ steps.bundle.outputs.drivetrain_commit }}) (unchanged)" >> $GITHUB_STEP_SUMMARY
           else
             echo "- **Drivetrain:** [$(echo ${{ steps.previous_commits.outputs.prev_drivetrain_commit }} | cut -c1-7)..$(echo ${{ steps.bundle.outputs.drivetrain_commit }} | cut -c1-7)](https://github.com/kreed/ridelines-drivetrain/compare/${{ steps.previous_commits.outputs.prev_drivetrain_commit }}..${{ steps.bundle.outputs.drivetrain_commit }})" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Chainring
+          if [ "${{ steps.previous_commits.outputs.prev_chainring_commit }}" = "${{ steps.bundle.outputs.chainring_commit }}" ]; then
+            echo "- **Chainring:** [$(echo ${{ steps.bundle.outputs.chainring_commit }} | cut -c1-7)](https://github.com/kreed/ridelines-chainring/commit/${{ steps.bundle.outputs.chainring_commit }}) (unchanged)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- **Chainring:** [$(echo ${{ steps.previous_commits.outputs.prev_chainring_commit }} | cut -c1-7)..$(echo ${{ steps.bundle.outputs.chainring_commit }} | cut -c1-7)](https://github.com/kreed/ridelines-chainring/compare/${{ steps.previous_commits.outputs.prev_chainring_commit }}..${{ steps.bundle.outputs.chainring_commit }})" >> $GITHUB_STEP_SUMMARY
           fi
           
           # Tippecanoe

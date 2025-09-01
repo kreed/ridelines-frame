@@ -36,3 +36,8 @@ variable "tags" {
   default     = {}
 }
 
+variable "chainring_lambda_url" {
+  description = "URL of the chainring Lambda function"
+  type        = string
+}
+

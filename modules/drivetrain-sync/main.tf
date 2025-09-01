@@ -179,6 +179,7 @@ resource "aws_lambda_function" "sync_lambda" {
       S3_BUCKET            = aws_s3_bucket.geojson_storage.bucket
       ACTIVITIES_S3_BUCKET = var.activities_bucket_name
       USERS_TABLE_NAME     = var.users_table_name
+      CLERK_SECRET_KEY     = var.clerk_secret_key
       RUST_LOG             = "info"
     }
   }

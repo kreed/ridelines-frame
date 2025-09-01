@@ -56,6 +56,12 @@ variable "users_table_arn" {
   type        = string
 }
 
+variable "clerk_secret_key" {
+  description = "Clerk secret key for OAuth token retrieval"
+  type        = string
+  sensitive   = true
+}
+
 variable "tags" {
   description = "Tags to apply to all resources"
   type        = map(string)

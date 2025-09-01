@@ -12,6 +12,9 @@ provider "aws" {
 locals {
   website_bucket_name    = "${var.project_name}-${var.environment}-website-assets"
   activities_bucket_name = "${var.project_name}-${var.environment}-activities"
+
+  # Extract domain from Lambda function URL (remove https:// prefix and any trailing slash)
+  chainring_origin_domain = trimspace(replace(replace(var.chainring_lambda_url, "https://", ""), "/", ""))
 }
 
 # ACM Certificate for CloudFront (must be in us-east-1)
@@ -208,6 +211,10 @@ data "aws_cloudfront_response_headers_policy" "cors_and_security_headers" {
   name = "Managed-CORS-with-preflight-and-SecurityHeadersPolicy"
 }
 
+data "aws_cloudfront_origin_request_policy" "all_viewer_except_host_header" {
+  name = "Managed-AllViewerExceptHostHeader"
+}
+
 
 # Generate RSA private key for CloudFront signing
 resource "tls_private_key" "cloudfront_signing" {
@@ -281,6 +288,24 @@ resource "aws_cloudfront_origin_access_control" "activities" {
   signing_protocol                  = "sigv4"
 }
 
+# CloudFront Function for auth validation and path rewriting
+resource "aws_cloudfront_function" "auth_rewrite" {
+  name    = "${var.project_name}-${var.environment}-auth-rewrite"
+  runtime = "cloudfront-js-2.0"
+  comment = "Validates auth header and rewrites /trpc paths"
+  publish = true
+  code    = file("${path.module}/cloudfront-auth-function.js")
+}
+
+# Origin Access Control for Chainring Lambda
+resource "aws_cloudfront_origin_access_control" "chainring" {
+  name                              = "${var.project_name}-${var.environment}-chainring-oac"
+  description                       = "OAC for Chainring Lambda Function URL"
+  origin_access_control_origin_type = "lambda"
+  signing_behavior                  = "always"
+  signing_protocol                  = "sigv4"
+}
+
 # CloudFront Distribution
 resource "aws_cloudfront_distribution" "main" {
   # Website origin
@@ -295,6 +320,13 @@ resource "aws_cloudfront_distribution" "main" {
     domain_name              = aws_s3_bucket.activities.bucket_regional_domain_name
     origin_access_control_id = aws_cloudfront_origin_access_control.activities.id
     origin_id                = "S3-${aws_s3_bucket.activities.bucket}"
+  }
+
+  # Chainring Lambda origin with IAM auth
+  origin {
+    domain_name              = local.chainring_origin_domain
+    origin_id                = "Lambda-Chainring"
+    origin_access_control_id = aws_cloudfront_origin_access_control.chainring.id
   }
 
   enabled         = true
@@ -347,6 +379,27 @@ resource "aws_cloudfront_distribution" "main" {
 
     # Require signed URLs for access
     trusted_key_groups = [aws_cloudfront_key_group.activities.id]
+  }
+
+  # Behavior for tRPC API calls to Chainring Lambda
+  ordered_cache_behavior {
+    path_pattern           = "/trpc/*"
+    allowed_methods        = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+    cached_methods         = ["GET", "HEAD"]
+    target_origin_id       = "Lambda-Chainring"
+    compress               = true
+    viewer_protocol_policy = "redirect-to-https"
+
+    # No caching for API calls
+    cache_policy_id            = data.aws_cloudfront_cache_policy.caching_disabled.id
+    origin_request_policy_id   = data.aws_cloudfront_origin_request_policy.all_viewer_except_host_header.id
+    response_headers_policy_id = data.aws_cloudfront_response_headers_policy.cors_and_security_headers.id
+
+    # Attach CloudFront Function for auth validation and path rewriting
+    function_association {
+      event_type   = "viewer-request"
+      function_arn = aws_cloudfront_function.auth_rewrite.arn
+    }
   }
 
   restrictions {

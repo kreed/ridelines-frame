@@ -64,38 +64,30 @@ resource "aws_route53_record" "dev_delegation" {
 module "website" {
   source = "../../modules/website"
 
-  project_name   = var.project_name
-  environment    = local.environment
-  domain_name    = var.domain_name
-  hosted_zone_id = module.dns.hosted_zone_id
-  price_class    = var.cloudfront_price_class
-  enable_logging = var.enable_cloudfront_logging
-  tags           = local.common_tags
+  project_name         = var.project_name
+  environment          = local.environment
+  domain_name          = var.domain_name
+  hosted_zone_id       = module.dns.hosted_zone_id
+  price_class          = var.cloudfront_price_class
+  enable_logging       = var.enable_cloudfront_logging
+  chainring_lambda_url = module.chainring.lambda_function_url
+  tags                 = local.common_tags
 }
 
-# Users module (DynamoDB table for user profiles and sync status)
-module "drivetrain_users" {
-  source = "../../modules/drivetrain-users"
+# Chainring API module (new tRPC backend that owns the users table)
+module "chainring" {
+  source = "../../modules/chainring"
 
-  project_name           = var.project_name
-  environment            = local.environment
-  frontend_url           = "https://${var.domain_name}"
-  cloudfront_key_pair_id = module.website.cloudfront_key_pair_id
-  cloudfront_private_key = module.website.cloudfront_private_key
-  tags                   = local.common_tags
-}
-
-# Auth module (OAuth infrastructure)
-module "drivetrain_auth" {
-  source = "../../modules/drivetrain-auth"
-
-  project_name     = var.project_name
-  environment      = local.environment
-  users_table_name = module.drivetrain_users.users_table_name
-  users_table_arn  = module.drivetrain_users.users_table_arn
-  frontend_url     = "https://${var.domain_name}"
-  api_domain       = "api.${var.domain_name}"
-  tags             = local.common_tags
+  project_name                = var.project_name
+  environment                 = local.environment
+  aws_region                  = var.aws_region
+  lambda_package_path         = "${path.module}/../../packages/chainring.zip"
+  clerk_secret_key            = var.clerk_secret_key
+  clerk_publishable_key       = var.clerk_publishable_key
+  clerk_jwt_key               = var.clerk_jwt_key
+  allowed_origins             = ["https://${var.domain_name}"]
+  cloudfront_distribution_arn = module.website.cloudfront_distribution_arn
+  tags                        = local.common_tags
 }
 
 # Sync module (existing activity sync functionality)
@@ -110,25 +102,8 @@ module "drivetrain_sync" {
   cloudfront_distribution_arn = module.website.cloudfront_distribution_arn
   users_table_name            = module.drivetrain_users.users_table_name
   users_table_arn             = module.drivetrain_users.users_table_arn
+  clerk_secret_key            = var.clerk_secret_key
   tags                        = local.common_tags
-}
-
-# API Gateway module
-module "api_gateway" {
-  source = "../../modules/api-gateway"
-
-  environment                     = local.environment
-  domain_name                     = "api.${var.domain_name}"
-  route53_zone_id                 = module.dns.hosted_zone_id
-  auth_lambda_arn                 = module.drivetrain_auth.lambda_function_arn
-  auth_lambda_function_name       = module.drivetrain_auth.lambda_function_name
-  user_lambda_arn                 = module.drivetrain_users.lambda_function_arn
-  user_lambda_function_name       = module.drivetrain_users.lambda_function_name
-  auth_verify_lambda_arn          = module.drivetrain_auth.auth_verify_lambda_function_arn
-  api_gateway_authorizer_role_arn = module.drivetrain_auth.api_gateway_authorizer_role_arn
-  jwt_kms_key_arn                 = module.drivetrain_auth.jwt_signing_key_arn
-  frontend_origin                 = "https://${var.domain_name}"
-  openapi_spec_path               = "../../../artifacts/drivetrain/ridelines-api.yaml"
 }
 
 # GitHub Actions IAM module

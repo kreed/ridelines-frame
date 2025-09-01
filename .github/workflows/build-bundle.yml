@@ -62,14 +62,10 @@ jobs:
           echo "Downloading latest drivetrain artifacts..."
           mkdir -p artifacts/drivetrain
           
-          # Pull and extract lambda container (latest) - now contains 4 separate Lambda functions
+          # Pull and extract lambda container (latest) - now contains only sync Lambda
           docker pull ghcr.io/kreed/ridelines-drivetrain:latest
           docker create --name lambda-extract ghcr.io/kreed/ridelines-drivetrain:latest /bin/sh
-          docker cp lambda-extract:/auth-lambda-package.zip artifacts/drivetrain/auth-lambda.zip
-          docker cp lambda-extract:/auth-verify-lambda-package.zip artifacts/drivetrain/auth-verify-lambda.zip
-          docker cp lambda-extract:/user-lambda-package.zip artifacts/drivetrain/user-lambda.zip
           docker cp lambda-extract:/sync-lambda-package.zip artifacts/drivetrain/sync-lambda.zip
-          docker cp lambda-extract:/ridelines-api.yaml artifacts/drivetrain/ridelines-api.yaml
           docker rm lambda-extract
           
           # Pull and extract layer container (latest)
@@ -77,6 +73,17 @@ jobs:
           docker create --name layer-extract ghcr.io/kreed/ridelines-tippecanoe-layer:latest /bin/sh
           docker cp layer-extract:/layer-package.zip artifacts/drivetrain/layer.zip
           docker rm layer-extract
+
+      - name: Download chainring artifacts
+        run: |
+          echo "Downloading latest chainring artifacts..."
+          mkdir -p artifacts/chainring
+          
+          # Pull and extract chainring container (latest)
+          docker pull ghcr.io/kreed/ridelines-chainring:latest
+          docker create --name chainring-extract ghcr.io/kreed/ridelines-chainring:latest /bin/sh
+          docker cp chainring-extract:/app/dist/chainring.zip artifacts/chainring/chainring.zip
+          docker rm chainring-extract
 
       - name: Get commit SHAs from container labels
         id: commits
@@ -88,15 +95,18 @@ jobs:
           # Extract commit SHAs from container labels
           HUB_COMMIT=$(docker inspect ghcr.io/kreed/ridelines-hub:latest | jq -r '.[0].Config.Labels["ridelines.hub.commit"]')
           DRIVETRAIN_COMMIT=$(docker inspect ghcr.io/kreed/ridelines-drivetrain:latest | jq -r '.[0].Config.Labels["ridelines.drivetrain.commit"]')
+          CHAINRING_COMMIT=$(docker inspect ghcr.io/kreed/ridelines-chainring:latest | jq -r '.[0].Config.Labels["ridelines.chainring.commit"]')
           TIPPECANOE_COMMIT=$(docker inspect ghcr.io/kreed/ridelines-tippecanoe-layer:latest | jq -r '.[0].Config.Labels["ridelines.tippecanoe.commit"]')
           
           echo "hub_commit=${HUB_COMMIT}" >> $GITHUB_OUTPUT
           echo "drivetrain_commit=${DRIVETRAIN_COMMIT}" >> $GITHUB_OUTPUT
+          echo "chainring_commit=${CHAINRING_COMMIT}" >> $GITHUB_OUTPUT
           echo "tippecanoe_commit=${TIPPECANOE_COMMIT}" >> $GITHUB_OUTPUT
           
           echo "Frame commit: ${FRAME_COMMIT}"
           echo "Hub commit: ${HUB_COMMIT}"
           echo "Drivetrain commit: ${DRIVETRAIN_COMMIT}"
+          echo "Chainring commit: ${CHAINRING_COMMIT}"
           echo "Tippecanoe commit: ${TIPPECANOE_COMMIT}"
 
       - name: Generate bundle version
@@ -141,28 +151,13 @@ jobs:
             exit 1
           fi
           
-          if [ ! -f "artifacts/drivetrain/auth-lambda.zip" ]; then
-            echo "Error: Drivetrain auth-lambda.zip not found"
-            exit 1
-          fi
-          
-          if [ ! -f "artifacts/drivetrain/auth-verify-lambda.zip" ]; then
-            echo "Error: Drivetrain auth-verify-lambda.zip not found"
-            exit 1
-          fi
-          
-          if [ ! -f "artifacts/drivetrain/user-lambda.zip" ]; then
-            echo "Error: Drivetrain user-lambda.zip not found"
-            exit 1
-          fi
-          
           if [ ! -f "artifacts/drivetrain/sync-lambda.zip" ]; then
             echo "Error: Drivetrain sync-lambda.zip not found"
             exit 1
           fi
           
-          if [ ! -f "artifacts/drivetrain/ridelines-api.yaml" ]; then
-            echo "Error: Drivetrain OpenAPI spec ridelines-api.yaml not found"
+          if [ ! -f "artifacts/chainring/chainring.zip" ]; then
+            echo "Error: Chainring chainring.zip not found"
             exit 1
           fi
           
@@ -184,10 +179,8 @@ jobs:
           done
           
           # Verify zip files are valid
-          unzip -t artifacts/drivetrain/auth-lambda.zip > /dev/null || { echo "Error: Invalid auth-lambda.zip"; exit 1; }
-          unzip -t artifacts/drivetrain/auth-verify-lambda.zip > /dev/null || { echo "Error: Invalid auth-verify-lambda.zip"; exit 1; }
-          unzip -t artifacts/drivetrain/user-lambda.zip > /dev/null || { echo "Error: Invalid user-lambda.zip"; exit 1; }
           unzip -t artifacts/drivetrain/sync-lambda.zip > /dev/null || { echo "Error: Invalid sync-lambda.zip"; exit 1; }
+          unzip -t artifacts/chainring/chainring.zip > /dev/null || { echo "Error: Invalid chainring.zip"; exit 1; }
           unzip -t artifacts/drivetrain/layer.zip > /dev/null || { echo "Error: Invalid layer.zip"; exit 1; }
           
           echo "✅ Bundle validation passed"
@@ -208,6 +201,7 @@ jobs:
             ridelines.commit.frame=${{ steps.commits.outputs.frame_commit }}
             ridelines.commit.hub=${{ steps.commits.outputs.hub_commit }}
             ridelines.commit.drivetrain=${{ steps.commits.outputs.drivetrain_commit }}
+            ridelines.commit.chainring=${{ steps.commits.outputs.chainring_commit }}
             ridelines.commit.tippecanoe=${{ steps.commits.outputs.tippecanoe_commit }}
 
       - name: Trigger dev deployment
@@ -237,4 +231,5 @@ jobs:
           echo "- **Frame**: [${{ steps.commits.outputs.frame_commit }}](https://github.com/kreed/ridelines-frame/commit/${{ steps.commits.outputs.frame_commit }})" >> $GITHUB_STEP_SUMMARY
           echo "- **Hub**: [${{ steps.commits.outputs.hub_commit }}](https://github.com/kreed/ridelines-hub/commit/${{ steps.commits.outputs.hub_commit }})" >> $GITHUB_STEP_SUMMARY
           echo "- **Drivetrain**: [${{ steps.commits.outputs.drivetrain_commit }}](https://github.com/kreed/ridelines-drivetrain/commit/${{ steps.commits.outputs.drivetrain_commit }})" >> $GITHUB_STEP_SUMMARY
+          echo "- **Chainring**: [${{ steps.commits.outputs.chainring_commit }}](https://github.com/kreed/ridelines-chainring/commit/${{ steps.commits.outputs.chainring_commit }})" >> $GITHUB_STEP_SUMMARY
           echo "- **Tippecanoe**: [${{ steps.commits.outputs.tippecanoe_commit }}](https://github.com/felt/tippecanoe/commit/${{ steps.commits.outputs.tippecanoe_commit }})" >> $GITHUB_STEP_SUMMARY

@@ -1,0 +1,53 @@
+variable "project_name" {
+  description = "Name of the project"
+  type        = string
+}
+
+variable "environment" {
+  description = "Environment name (e.g. dev, staging, prod)"
+  type        = string
+}
+
+variable "aws_region" {
+  description = "AWS region"
+  type        = string
+}
+
+variable "lambda_package_path" {
+  description = "Path to the chainring Lambda function zip package"
+  type        = string
+  default     = "../../../artifacts/chainring/chainring.zip"
+}
+
+variable "clerk_secret_key" {
+  description = "Clerk secret key for backend authentication"
+  type        = string
+  sensitive   = true
+}
+
+variable "clerk_publishable_key" {
+  description = "Clerk publishable key"
+  type        = string
+}
+
+variable "clerk_jwt_key" {
+  description = "Clerk JWT public key for verification"
+  type        = string
+}
+
+variable "allowed_origins" {
+  description = "List of allowed origins for CORS"
+  type        = list(string)
+  default     = ["https://ridelines.xyz"]
+}
+
+variable "cloudfront_distribution_arn" {
+  description = "ARN of the CloudFront distribution that will invoke this function"
+  type        = string
+}
+
+variable "tags" {
+  description = "Resource tags"
+  type        = map(string)
+  default     = {}
+}

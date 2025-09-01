@@ -30,16 +30,24 @@ variable "enable_cloudfront_logging" {
   default     = true
 }
 
-variable "enable_lambda_function_url" {
-  description = "Enable Lambda function URL"
-  type        = bool
-  default     = false
-}
-
 variable "github_repository" {
   description = "GitHub repository in the format 'owner/repo'"
   type        = string
   default     = "kreed/ridelines-frame"
 }
 
+variable "clerk_secret_key" {
+  description = "Clerk secret key for authentication and OAuth token retrieval"
+  type        = string
+  sensitive   = true
+}
 
+variable "clerk_publishable_key" {
+  description = "Clerk publishable key"
+  type        = string
+}
+
+variable "clerk_jwt_key" {
+  description = "Clerk JWT public key for verification"
+  type        = string
+}
