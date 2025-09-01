@@ -78,7 +78,7 @@ resource "aws_lambda_function_url" "chainring" {
   cors {
     allow_credentials = true
     allow_origins     = var.allowed_origins
-    allow_methods     = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+    allow_methods     = ["GET", "POST", "PUT", "DELETE"]
     allow_headers     = ["content-type", "authorization", "x-amz-date", "x-amz-security-token"]
     expose_headers    = ["*"]
     max_age           = 86400
