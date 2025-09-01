@@ -99,6 +99,7 @@ resource "aws_lambda_function" "chainring_lambda" {
   environment {
     variables = {
       NODE_ENV              = var.environment
+      NODE_OPTIONS          = "--enable-source-maps"
       USERS_TABLE_NAME      = aws_dynamodb_table.users.name
       CLERK_SECRET_KEY      = var.clerk_secret_key
       CLERK_PUBLISHABLE_KEY = var.clerk_publishable_key
