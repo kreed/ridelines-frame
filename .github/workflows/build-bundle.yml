@@ -82,7 +82,7 @@ jobs:
           # Pull and extract chainring container (latest)
           docker pull ghcr.io/kreed/ridelines-chainring:latest
           docker create --name chainring-extract ghcr.io/kreed/ridelines-chainring:latest /bin/sh
-          docker cp chainring-extract:/app/dist/chainring.zip artifacts/chainring/chainring.zip
+          docker cp chainring-extract:/chainring-lambda-package.zip artifacts/chainring/chainring.zip
           docker rm chainring-extract
 
       - name: Get commit SHAs from container labels
