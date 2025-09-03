@@ -83,6 +83,8 @@ jobs:
           docker pull ghcr.io/kreed/ridelines-chainring:latest
           docker create --name chainring-extract ghcr.io/kreed/ridelines-chainring:latest /bin/sh
           docker cp chainring-extract:/chainring-lambda-package.zip artifacts/chainring/chainring.zip
+          # Copy CloudFront auth function from chainring image
+          docker cp chainring-extract:/cloudfront-auth-function.js artifacts/chainring/cloudfront-auth-function.js
           docker rm chainring-extract
 
       - name: Get commit SHAs from container labels
@@ -134,6 +136,9 @@ jobs:
           # Copy terraform configuration
           COPY environments/ /deployment/terraform/environments/
           COPY modules/ /deployment/terraform/modules/
+          
+          # Ensure CloudFront auth function is present in website module
+          COPY artifacts/chainring/cloudfront-auth-function.js /deployment/terraform/modules/website/cloudfront-auth-function.js
           
           # Add metadata labels
           LABEL org.opencontainers.image.title="Ridelines Deployment Bundle"
