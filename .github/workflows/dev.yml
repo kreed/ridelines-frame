@@ -16,12 +16,9 @@ permissions:
   id-token: write
   actions: write
 
-concurrency:
-  group: dev-deployment
-
 jobs:
   stage:
-    name: Dev
+    name: Dev prepare
     uses: ./.github/workflows/base-stage.yml
     with:
       environment: dev
@@ -37,9 +34,11 @@ jobs:
         clerk_publishable_key = "${{ secrets.dev_clerk_publishable_key }}"
 
   deploy:
-    name: Dev
+    name: Dev deploy
     needs: stage
     uses: ./.github/workflows/base-deploy.yml
+    concurrency:
+      group: dev-deployment
     with:
       environment: dev
       bundle_version: ${{ inputs.bundle_version }}

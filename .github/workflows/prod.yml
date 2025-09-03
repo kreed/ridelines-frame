@@ -21,12 +21,9 @@ permissions:
   id-token: write
   actions: write
 
-concurrency:
-  group: prod-deployment
-
 jobs:
   stage:
-    name: Prod
+    name: Prod prepare
     uses: ./.github/workflows/base-stage.yml
     with:
       environment: prod
@@ -43,9 +40,11 @@ jobs:
 
   # Production environment protection rules will require approval for this job
   deploy:
-    name: Prod
+    name: Prod prepare
     needs: [stage]
     uses: ./.github/workflows/base-deploy.yml
+    concurrency:
+      group: prod-deployment
     with:
       environment: prod
       bundle_version: ${{ inputs.bundle_version }}
