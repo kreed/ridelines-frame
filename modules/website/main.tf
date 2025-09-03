@@ -10,7 +10,7 @@ provider "aws" {
 
 # Locals for resource naming
 locals {
-  website_bucket_name    = "${var.project_name}-${var.environment}-website-assets"
+  website_bucket_name    = "${var.project_name}-${var.environment}-static-assets"
   activities_bucket_name = "${var.project_name}-${var.environment}-activities"
 
   # Extract domain from Lambda function URL
@@ -66,10 +66,10 @@ resource "aws_s3_bucket" "website" {
   tags   = var.tags
 }
 
-resource "aws_s3_bucket_versioning" "website" {
+resource "aws_s3_bucket_versioning" "static_assets" {
   bucket = aws_s3_bucket.website.id
   versioning_configuration {
-    status = "Enabled"
+    status = "Disabled"
   }
 }
 
@@ -94,13 +94,10 @@ resource "aws_s3_bucket_public_access_block" "website" {
 resource "aws_s3_bucket_lifecycle_configuration" "website" {
   bucket = aws_s3_bucket.website.id
   rule {
-    id     = "delete_old_versions"
+    id     = "cleanup_incomplete_uploads"
     status = "Enabled"
     filter {
       prefix = ""
-    }
-    noncurrent_version_expiration {
-      noncurrent_days = 30
     }
     abort_incomplete_multipart_upload {
       days_after_initiation = 7
