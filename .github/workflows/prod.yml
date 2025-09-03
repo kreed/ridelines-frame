@@ -26,19 +26,29 @@ concurrency:
 
 jobs:
   stage:
-    name: Stage Production Release
+    name: Prod
     uses: ./.github/workflows/base-stage.yml
     with:
       environment: prod
       bundle_version: ${{ inputs.bundle_version }}
-    secrets: inherit
+      role_arn: ${{ vars.PROD_AWS_ROLE_ARN }}
+      aws_region: ${{ vars.AWS_REGION }}
+    secrets:
+      additional_tfvars: |
+        clerk_secret_key = "${{ secrets.prod_clerk_secret_key }}"
+        clerk_jwt_key = <<EOF
+        ${{ secrets.prod_clerk_jwt_key }}
+        EOF
+        clerk_publishable_key = "${{ secrets.prod_clerk_publishable_key }}"
 
+  # Production environment protection rules will require approval for this job
   deploy:
-    name: Deploy to Production
+    name: Prod
     needs: [stage]
     uses: ./.github/workflows/base-deploy.yml
     with:
       environment: prod
       bundle_version: ${{ inputs.bundle_version }}
+      role_arn: ${{ vars.PROD_AWS_ROLE_ARN }}
+      aws_region: ${{ vars.AWS_REGION }}
     secrets: inherit
-    # Production environment protection rules will handle approval

@@ -21,20 +21,30 @@ concurrency:
 
 jobs:
   stage:
-    name: Stage Development Release
+    name: Dev
     uses: ./.github/workflows/base-stage.yml
     with:
       environment: dev
       bundle_version: ${{ inputs.bundle_version }}
-    secrets: inherit
+      role_arn: ${{ vars.DEV_AWS_ROLE_ARN }}
+      aws_region: ${{ vars.AWS_REGION }}
+    secrets:
+      additional_tfvars: |
+        clerk_secret_key = "${{ secrets.dev_clerk_secret_key }}"
+        clerk_jwt_key = <<EOF
+        ${{ secrets.dev_clerk_jwt_key }}
+        EOF
+        clerk_publishable_key = "${{ secrets.dev_clerk_publishable_key }}"
 
   deploy:
-    name: Deploy to Development
+    name: Dev
     needs: stage
     uses: ./.github/workflows/base-deploy.yml
     with:
       environment: dev
       bundle_version: ${{ inputs.bundle_version }}
+      role_arn: ${{ vars.DEV_AWS_ROLE_ARN }}
+      aws_region: ${{ vars.AWS_REGION }}
     secrets: inherit
 
   trigger-prod-staging:
