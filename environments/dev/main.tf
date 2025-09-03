@@ -67,6 +67,8 @@ module "chainring" {
   domain_name                 = var.domain_name
   allowed_origins             = ["https://${var.domain_name}", "http://localhost:5173"]
   cloudfront_distribution_arn = module.website.cloudfront_distribution_arn
+  cloudfront_key_pair_id      = module.website.cloudfront_key_pair_id
+  cloudfront_private_key      = module.website.cloudfront_private_key
   tags                        = local.common_tags
 }
 

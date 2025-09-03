@@ -41,6 +41,18 @@ variable "cloudfront_distribution_arn" {
   type        = string
 }
 
+variable "cloudfront_key_pair_id" {
+  description = "CloudFront key pair ID for signed URLs"
+  type        = string
+  sensitive   = true
+}
+
+variable "cloudfront_private_key" {
+  description = "CloudFront private key (PEM) for signed URLs"
+  type        = string
+  sensitive   = true
+}
+
 variable "domain_name" {
   description = "Domain name for the application"
   type        = string
