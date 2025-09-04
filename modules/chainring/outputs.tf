@@ -32,3 +32,4 @@ output "users_table_arn" {
   description = "ARN of the DynamoDB users table"
   value       = aws_dynamodb_table.users.arn
 }
+

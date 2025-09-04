@@ -1,6 +1,6 @@
 # DynamoDB Users Table
 resource "aws_dynamodb_table" "users" {
-  name         = "${var.project_name}-${var.environment}-users"
+  name         = "ridelines-users"
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "id"
 
@@ -11,6 +11,7 @@ resource "aws_dynamodb_table" "users" {
 
   tags = var.tags
 }
+
 
 # CloudWatch log group for chainring Lambda function
 resource "aws_cloudwatch_log_group" "chainring_lambda_logs" {
@@ -70,6 +71,29 @@ resource "aws_iam_role_policy" "chainring_lambda_dynamodb" {
   })
 }
 
+# IAM policy for SQS access
+resource "aws_iam_role_policy" "chainring_lambda_sqs" {
+  name = "${var.project_name}-${var.environment}-chainring-sqs"
+  role = aws_iam_role.chainring_lambda_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "sqs:SendMessage",
+          "sqs:GetQueueAttributes",
+          "sqs:GetQueueUrl"
+        ]
+        Resource = [
+          var.sync_queue_arn
+        ]
+      }
+    ]
+  })
+}
+
 # Lambda function URL for chainring (with IAM auth for CloudFront only)
 resource "aws_lambda_function_url" "chainring" {
   function_name      = aws_lambda_function.chainring_lambda.function_name
@@ -101,7 +125,6 @@ resource "aws_lambda_function" "chainring_lambda" {
       {
         NODE_ENV               = var.environment
         NODE_OPTIONS           = "--enable-source-maps"
-        USERS_TABLE_NAME       = aws_dynamodb_table.users.name
         CLERK_SECRET_KEY       = var.clerk_secret_key
         CLERK_PUBLISHABLE_KEY  = var.clerk_publishable_key
         CLERK_JWT_KEY          = var.clerk_jwt_key

@@ -69,3 +69,8 @@ variable "log_level" {
   type        = string
   default     = ""
 }
+
+variable "sync_queue_arn" {
+  description = "ARN of the SQS queue for sync requests"
+  type        = string
+}

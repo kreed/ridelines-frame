@@ -22,3 +22,13 @@ output "geojson_bucket_arn" {
   description = "ARN of the S3 bucket for GeoJSON storage"
   value       = aws_s3_bucket.geojson_storage.arn
 }
+
+output "sync_queue_arn" {
+  description = "ARN of the SQS sync requests queue"
+  value       = aws_sqs_queue.sync_requests.arn
+}
+
+output "sync_queue_url" {
+  description = "URL of the SQS sync requests queue"
+  value       = aws_sqs_queue.sync_requests.url
+}

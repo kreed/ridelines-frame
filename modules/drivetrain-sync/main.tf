@@ -1,3 +1,26 @@
+# SQS Queue for sync requests
+resource "aws_sqs_queue" "sync_requests" {
+  name                       = "ridelines-sync-requests"
+  visibility_timeout_seconds = 900    # 15 minutes (Lambda timeout is 600s/10min)
+  message_retention_seconds  = 259200 # 3 days
+  receive_wait_time_seconds  = 0      # Short polling
+
+  redrive_policy = jsonencode({
+    deadLetterTargetArn = aws_sqs_queue.sync_requests_dlq.arn
+    maxReceiveCount     = 3
+  })
+
+  tags = var.tags
+}
+
+# Dead Letter Queue for failed sync requests
+resource "aws_sqs_queue" "sync_requests_dlq" {
+  name                      = "ridelines-sync-requests-dlq"
+  message_retention_seconds = 1209600 # 14 days
+
+  tags = var.tags
+}
+
 # S3 bucket for storing athlete GeoJSON data (sync module owns this)
 resource "aws_s3_bucket" "geojson_storage" {
   bucket = "${var.project_name}-${var.environment}-geojson-${random_id.bucket_suffix.hex}"
@@ -80,6 +103,30 @@ resource "aws_iam_role" "sync_lambda_role" {
 resource "aws_iam_role_policy_attachment" "sync_lambda_basic_execution" {
   role       = aws_iam_role.sync_lambda_role.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+# IAM policy for SQS access
+resource "aws_iam_role_policy" "sync_lambda_sqs" {
+  name = "${var.project_name}-${var.environment}-sync-sqs"
+  role = aws_iam_role.sync_lambda_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "sqs:ReceiveMessage",
+          "sqs:DeleteMessage",
+          "sqs:GetQueueAttributes",
+          "sqs:ChangeMessageVisibility"
+        ]
+        Resource = [
+          aws_sqs_queue.sync_requests.arn
+        ]
+      }
+    ]
+  })
 }
 
 # IAM policy for S3 access (geojson storage bucket - owned by sync module)
@@ -190,5 +237,12 @@ resource "aws_lambda_function" "sync_lambda" {
   ]
 
   tags = var.tags
+}
+
+# SQS Lambda trigger
+resource "aws_lambda_event_source_mapping" "sync_sqs" {
+  event_source_arn = aws_sqs_queue.sync_requests.arn
+  function_name    = aws_lambda_function.sync_lambda.arn
+  batch_size       = 1 # Process one sync request at a time
 }
 
