@@ -63,3 +63,9 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "log_level" {
+  description = "Log level for Lambda function (DEBUG, INFO, WARN, ERROR)"
+  type        = string
+  default     = ""
+}
