@@ -60,6 +60,50 @@ resource "aws_route53_record" "dev_delegation" {
   records = data.terraform_remote_state.dev.outputs.name_servers
 }
 
+# CNAME record for Clerk authentication
+resource "aws_route53_record" "clerk" {
+  zone_id = module.dns.hosted_zone_id
+  name    = "clerk.${var.domain_name}"
+  type    = "CNAME"
+  ttl     = 300
+  records = ["frontend-api.clerk.services"]
+}
+
+# CNAME record for Clerk accounts
+resource "aws_route53_record" "clerk_accounts" {
+  zone_id = module.dns.hosted_zone_id
+  name    = "accounts.${var.domain_name}"
+  type    = "CNAME"
+  ttl     = 300
+  records = ["accounts.clerk.services"]
+}
+
+# CNAME record for Clerk mail
+resource "aws_route53_record" "clerk_mail" {
+  zone_id = module.dns.hosted_zone_id
+  name    = "clkmail.${var.domain_name}"
+  type    = "CNAME"
+  ttl     = 300
+  records = ["mail.161qk4s98918.clerk.services"]
+}
+
+# CNAME records for Clerk DKIM keys
+resource "aws_route53_record" "clerk_dkim1" {
+  zone_id = module.dns.hosted_zone_id
+  name    = "clk._domainkey.${var.domain_name}"
+  type    = "CNAME"
+  ttl     = 300
+  records = ["dkim1.161qk4s98918.clerk.services"]
+}
+
+resource "aws_route53_record" "clerk_dkim2" {
+  zone_id = module.dns.hosted_zone_id
+  name    = "clk2._domainkey.${var.domain_name}"
+  type    = "CNAME"
+  ttl     = 300
+  records = ["dkim2.161qk4s98918.clerk.services"]
+}
+
 # Website module (CloudFront + S3 buckets + ACM certificate)
 module "website" {
   source = "../../modules/website"
