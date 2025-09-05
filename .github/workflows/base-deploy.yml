@@ -19,6 +19,10 @@ on:
         description: 'AWS region for this stage'
         required: true
         type: string
+    secrets:
+      clerk_publishable_key:
+        description: 'Clerk publishable key for this environment'
+        required: true
 
 permissions:
   contents: write
@@ -101,6 +105,18 @@ jobs:
           # Get outputs
           WEBSITE_BUCKET=$(tofu output -raw website_bucket_name)
           echo "website_bucket_name=${WEBSITE_BUCKET}" >> $GITHUB_OUTPUT
+
+      - name: Substitute hub env vars
+        run: |
+          # Replace __CLERK_PUBLISHABLE_KEY__ placeholder in _app/env.js
+          ENV_FILE="deployment/artifacts/hub/static-site/_app/env.js"
+          if [ ! -f "$ENV_FILE" ]; then
+            echo "Error: _app/env.js not found at $ENV_FILE"
+            exit 1
+          fi
+          
+          sed -i 's/__CLERK_PUBLISHABLE_KEY__/${{ secrets.clerk_publishable_key }}/g' "$ENV_FILE"
+          echo "Replaced Clerk publishable key in _app/env.js"
 
       - name: Deploy hub static assets to S3
         run: |

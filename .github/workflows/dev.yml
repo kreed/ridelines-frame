@@ -44,7 +44,8 @@ jobs:
       bundle_version: ${{ inputs.bundle_version }}
       role_arn: ${{ vars.DEV_AWS_ROLE_ARN }}
       aws_region: ${{ vars.AWS_REGION }}
-    secrets: inherit
+    secrets:
+      clerk_publishable_key: ${{ secrets.dev_clerk_publishable_key }}
 
   trigger-prod-staging:
     name: Trigger Prod Deployment

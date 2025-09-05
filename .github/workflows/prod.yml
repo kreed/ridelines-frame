@@ -50,4 +50,5 @@ jobs:
       bundle_version: ${{ inputs.bundle_version }}
       role_arn: ${{ vars.PROD_AWS_ROLE_ARN }}
       aws_region: ${{ vars.AWS_REGION }}
-    secrets: inherit
+    secrets:
+      clerk_publishable_key: ${{ secrets.prod_clerk_publishable_key }}
