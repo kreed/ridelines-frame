@@ -34,3 +34,18 @@ output "cloudfront_private_key" {
   value       = tls_private_key.cloudfront_signing.private_key_pem
   sensitive   = true
 }
+
+output "rum_app_monitor_id" {
+  description = "CloudWatch RUM app monitor ID"
+  value       = aws_rum_app_monitor.main.app_monitor_id
+}
+
+output "rum_app_monitor_name" {
+  description = "CloudWatch RUM app monitor name"
+  value       = aws_rum_app_monitor.main.name
+}
+
+output "rum_endpoint" {
+  description = "CloudWatch RUM endpoint URL (proxied through CloudFront)"
+  value       = "https://${var.domain_name}/rum"
+}

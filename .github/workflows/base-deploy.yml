@@ -106,6 +106,14 @@ jobs:
           WEBSITE_BUCKET=$(tofu output -raw website_bucket_name)
           echo "website_bucket_name=${WEBSITE_BUCKET}" >> $GITHUB_OUTPUT
 
+      - name: Get RUM App ID from Terraform
+        id: rum
+        run: |
+          cd deployment/terraform/environments/${{ inputs.environment }}
+          RUM_APP_ID=$(tofu output -raw rum_app_monitor_id)
+          echo "rum_app_id=${RUM_APP_ID}" >> $GITHUB_OUTPUT
+          echo "RUM App ID: ${RUM_APP_ID}"
+
       - name: Substitute hub env vars
         run: |
           # Replace __CLERK_PUBLISHABLE_KEY__ placeholder in _app/env.js
@@ -117,6 +125,10 @@ jobs:
           
           sed -i 's/__CLERK_PUBLISHABLE_KEY__/${{ secrets.clerk_publishable_key }}/g' "$ENV_FILE"
           echo "Replaced Clerk publishable key in _app/env.js"
+          
+          # Replace __RUM_APP_ID__ placeholder
+          sed -i 's/__RUM_APP_ID__/${{ steps.rum.outputs.rum_app_id }}/g' "$ENV_FILE"
+          echo "Replaced RUM App ID in _app/env.js"
 
       - name: Deploy hub static assets to S3
         run: |

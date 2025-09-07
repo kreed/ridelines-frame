@@ -195,6 +195,9 @@ resource "aws_s3_bucket_public_access_block" "logs" {
   restrict_public_buckets = true
 }
 
+# Data source for current AWS region
+data "aws_region" "current" {}
+
 # Data sources for CloudFront managed policies
 data "aws_cloudfront_cache_policy" "caching_optimized" {
   name = "Managed-CachingOptimized"
@@ -294,6 +297,15 @@ resource "aws_cloudfront_function" "auth_rewrite" {
   code    = file("${path.module}/cloudfront-auth-function.js")
 }
 
+# CloudFront Function for RUM path rewriting
+resource "aws_cloudfront_function" "rum_rewrite" {
+  name    = "${var.project_name}-${var.environment}-rum-rewrite"
+  runtime = "cloudfront-js-2.0"
+  comment = "Rewrites /rum paths to remove prefix"
+  publish = true
+  code    = file("${path.module}/cloudfront-rum-function.js")
+}
+
 # Origin Access Control for Chainring Lambda
 resource "aws_cloudfront_origin_access_control" "chainring" {
   name                              = "${var.project_name}-${var.environment}-chainring-oac"
@@ -324,6 +336,19 @@ resource "aws_cloudfront_distribution" "main" {
     domain_name              = local.chainring_origin_domain
     origin_id                = "Lambda-Chainring"
     origin_access_control_id = aws_cloudfront_origin_access_control.chainring.id
+
+    custom_origin_config {
+      http_port              = 80
+      https_port             = 443
+      origin_protocol_policy = "https-only"
+      origin_ssl_protocols   = ["TLSv1.2"]
+    }
+  }
+
+  # CloudWatch RUM origin
+  origin {
+    domain_name = "dataplane.rum.${data.aws_region.current.id}.amazonaws.com"
+    origin_id   = "RUM"
 
     custom_origin_config {
       http_port              = 80
@@ -406,6 +431,27 @@ resource "aws_cloudfront_distribution" "main" {
     }
   }
 
+  # Behavior for CloudWatch RUM events
+  ordered_cache_behavior {
+    path_pattern           = "/rum/*"
+    allowed_methods        = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+    cached_methods         = ["GET", "HEAD"]
+    target_origin_id       = "RUM"
+    compress               = true
+    viewer_protocol_policy = "redirect-to-https"
+
+    # No caching for RUM events
+    cache_policy_id            = data.aws_cloudfront_cache_policy.caching_disabled.id
+    origin_request_policy_id   = data.aws_cloudfront_origin_request_policy.all_viewer_except_host_header.id
+    response_headers_policy_id = data.aws_cloudfront_response_headers_policy.cors_and_security_headers.id
+
+    # Function to rewrite paths and add authentication
+    function_association {
+      event_type   = "viewer-request"
+      function_arn = aws_cloudfront_function.rum_rewrite.arn
+    }
+  }
+
   restrictions {
     geo_restriction {
       restriction_type = "none"
@@ -444,6 +490,26 @@ resource "aws_cloudfront_monitoring_subscription" "main" {
       realtime_metrics_subscription_status = "Enabled"
     }
   }
+}
+
+# CloudWatch RUM App Monitor (without Cognito)
+resource "aws_rum_app_monitor" "main" {
+  name   = "${var.project_name}-${var.environment}"
+  domain = var.domain_name
+
+  app_monitor_configuration {
+    allow_cookies       = false # GDPR compliance
+    enable_xray         = false
+    session_sample_rate = var.environment == "prod" ? 0.1 : 1.0
+    telemetries         = ["errors", "performance", "http"]
+  }
+
+  # Custom endpoint configuration to use CloudFront
+  custom_events {
+    status = "ENABLED"
+  }
+
+  tags = var.tags
 }
 
 # Route53 A record for the domain
