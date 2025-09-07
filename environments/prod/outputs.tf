@@ -25,3 +25,8 @@ output "cloudfront_distribution_id" {
   value       = module.website.cloudfront_distribution_id
 }
 
+output "rum_app_monitor_id" {
+  description = "CloudWatch RUM app monitor ID"
+  value       = module.website.rum_app_monitor_id
+}
+
