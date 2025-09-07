@@ -431,6 +431,21 @@ resource "aws_cloudfront_distribution" "main" {
   tags = var.tags
 }
 
+# CloudFront Monitoring Subscription for additional metrics
+resource "aws_cloudfront_monitoring_subscription" "main" {
+  distribution_id = aws_cloudfront_distribution.main.id
+
+  monitoring_subscription {
+    # Enable additional CloudWatch metrics
+    # Provides real-time metrics with 1-minute granularity
+    # Includes: Cache hit rate, Origin latency, Error rate by status code
+    # Cost: ~$0.01 per million requests
+    realtime_metrics_subscription_config {
+      realtime_metrics_subscription_status = "Enabled"
+    }
+  }
+}
+
 # Route53 A record for the domain
 resource "aws_route53_record" "main" {
   zone_id = var.hosted_zone_id
