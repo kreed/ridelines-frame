@@ -33,3 +33,13 @@ output "users_table_arn" {
   value       = aws_dynamodb_table.users.arn
 }
 
+output "sync_status_table_name" {
+  description = "Name of the DynamoDB sync status table"
+  value       = aws_dynamodb_table.sync_status.name
+}
+
+output "sync_status_table_arn" {
+  description = "ARN of the DynamoDB sync status table"
+  value       = aws_dynamodb_table.sync_status.arn
+}
+

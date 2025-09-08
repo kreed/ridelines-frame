@@ -12,6 +12,31 @@ resource "aws_dynamodb_table" "users" {
   tags = var.tags
 }
 
+# DynamoDB Sync Status Table
+resource "aws_dynamodb_table" "sync_status" {
+  name         = "ridelines-sync-status"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "userId"
+  range_key    = "syncId"
+
+  attribute {
+    name = "userId"
+    type = "S"
+  }
+
+  attribute {
+    name = "syncId"
+    type = "S"
+  }
+
+  ttl {
+    attribute_name = "ttl"
+    enabled        = true
+  }
+
+  tags = var.tags
+}
+
 
 # CloudWatch log group for chainring Lambda function
 resource "aws_cloudwatch_log_group" "chainring_lambda_logs" {
@@ -64,7 +89,8 @@ resource "aws_iam_role_policy" "chainring_lambda_dynamodb" {
           "dynamodb:UpdateItem"
         ]
         Resource = [
-          aws_dynamodb_table.users.arn
+          aws_dynamodb_table.users.arn,
+          aws_dynamodb_table.sync_status.arn
         ]
       }
     ]

@@ -56,6 +56,16 @@ variable "users_table_arn" {
   type        = string
 }
 
+variable "sync_status_table_name" {
+  description = "Name of the DynamoDB sync status table"
+  type        = string
+}
+
+variable "sync_status_table_arn" {
+  description = "ARN of the DynamoDB sync status table"
+  type        = string
+}
+
 variable "clerk_secret_key" {
   description = "Clerk secret key for OAuth token retrieval"
   type        = string

@@ -190,10 +190,12 @@ resource "aws_iam_role_policy" "sync_lambda_users_table" {
           "dynamodb:GetItem",
           "dynamodb:Query",
           "dynamodb:Scan",
+          "dynamodb:PutItem",
           "dynamodb:UpdateItem"
         ]
         Resource = [
-          var.users_table_arn
+          var.users_table_arn,
+          var.sync_status_table_arn
         ]
       }
     ]

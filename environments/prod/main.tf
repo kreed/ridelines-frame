@@ -148,6 +148,8 @@ module "drivetrain_sync" {
   cloudfront_distribution_arn = module.website.cloudfront_distribution_arn
   users_table_name            = module.chainring.users_table_name
   users_table_arn             = module.chainring.users_table_arn
+  sync_status_table_name      = module.chainring.sync_status_table_name
+  sync_status_table_arn       = module.chainring.sync_status_table_arn
   clerk_secret_key            = var.clerk_secret_key
   tags                        = local.common_tags
 }
