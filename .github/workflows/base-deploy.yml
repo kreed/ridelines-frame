@@ -63,7 +63,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Download OpenTofu plan artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: opentofu-plan-${{ inputs.environment }}-${{ inputs.bundle_version }}
           path: .
