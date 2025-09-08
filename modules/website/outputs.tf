@@ -45,7 +45,3 @@ output "rum_app_monitor_name" {
   value       = aws_rum_app_monitor.main.name
 }
 
-output "rum_endpoint" {
-  description = "CloudWatch RUM endpoint URL (proxied through CloudFront)"
-  value       = "https://${var.domain_name}/rum"
-}

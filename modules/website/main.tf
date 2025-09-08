@@ -297,15 +297,6 @@ resource "aws_cloudfront_function" "auth_rewrite" {
   code    = file("${path.module}/cloudfront-auth-function.js")
 }
 
-# CloudFront Function for RUM path rewriting
-resource "aws_cloudfront_function" "rum_rewrite" {
-  name    = "${var.project_name}-${var.environment}-rum-rewrite"
-  runtime = "cloudfront-js-2.0"
-  comment = "Rewrites /rum paths to remove prefix"
-  publish = true
-  code    = file("${path.module}/cloudfront-rum-function.js")
-}
-
 # Origin Access Control for Chainring Lambda
 resource "aws_cloudfront_origin_access_control" "chainring" {
   name                              = "${var.project_name}-${var.environment}-chainring-oac"
@@ -345,18 +336,6 @@ resource "aws_cloudfront_distribution" "main" {
     }
   }
 
-  # CloudWatch RUM origin
-  origin {
-    domain_name = "dataplane.rum.${data.aws_region.current.id}.amazonaws.com"
-    origin_id   = "RUM"
-
-    custom_origin_config {
-      http_port              = 80
-      https_port             = 443
-      origin_protocol_policy = "https-only"
-      origin_ssl_protocols   = ["TLSv1.2"]
-    }
-  }
 
   enabled         = true
   is_ipv6_enabled = true
@@ -431,26 +410,6 @@ resource "aws_cloudfront_distribution" "main" {
     }
   }
 
-  # Behavior for CloudWatch RUM events
-  ordered_cache_behavior {
-    path_pattern           = "/rum/*"
-    allowed_methods        = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-    cached_methods         = ["GET", "HEAD"]
-    target_origin_id       = "RUM"
-    compress               = true
-    viewer_protocol_policy = "redirect-to-https"
-
-    # No caching for RUM events
-    cache_policy_id            = data.aws_cloudfront_cache_policy.caching_disabled.id
-    origin_request_policy_id   = data.aws_cloudfront_origin_request_policy.all_viewer_except_host_header.id
-    response_headers_policy_id = data.aws_cloudfront_response_headers_policy.cors_and_security_headers.id
-
-    # Function to rewrite paths and add authentication
-    function_association {
-      event_type   = "viewer-request"
-      function_arn = aws_cloudfront_function.rum_rewrite.arn
-    }
-  }
 
   restrictions {
     geo_restriction {
@@ -498,18 +457,49 @@ resource "aws_rum_app_monitor" "main" {
   domain = var.domain_name
 
   app_monitor_configuration {
-    allow_cookies       = false # GDPR compliance
+    allow_cookies       = true
     enable_xray         = false
-    session_sample_rate = var.environment == "prod" ? 0.1 : 1.0
+    session_sample_rate = 1.0
     telemetries         = ["errors", "performance", "http"]
   }
 
-  # Custom endpoint configuration to use CloudFront
+  # Custom endpoint configuration
   custom_events {
     status = "ENABLED"
   }
 
   tags = var.tags
+}
+
+# RUM App Monitor Resource Policy for public access
+# Note: This needs to be applied via AWS CLI as Terraform doesn't have a native resource for RUM policies yet
+# https://github.com/hashicorp/terraform-provider-aws/issues/42257
+resource "null_resource" "rum_resource_policy" {
+  depends_on = [aws_rum_app_monitor.main]
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      aws rum put-resource-policy \
+        --name ${aws_rum_app_monitor.main.name} \
+        --policy-document '{
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": "*",
+              "Action": "rum:PutRumEvents",
+              "Resource": "${aws_rum_app_monitor.main.arn}"
+            }
+          ]
+        }' \
+        --region ${data.aws_region.current.id}
+    EOT
+  }
+
+  # Trigger replacement if app monitor changes
+  triggers = {
+    app_monitor_arn = aws_rum_app_monitor.main.arn
+  }
 }
 
 # Route53 A record for the domain
