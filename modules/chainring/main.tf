@@ -29,11 +29,6 @@ resource "aws_dynamodb_table" "sync_status" {
     type = "S"
   }
 
-  ttl {
-    attribute_name = "ttl"
-    enabled        = true
-  }
-
   tags = var.tags
 }
 

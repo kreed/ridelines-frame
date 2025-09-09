@@ -16,6 +16,11 @@ updates:
     commit-message:
       prefix: "ci"
       include: "scope"
+    groups:
+      # Group all GitHub Actions updates together
+      github-actions:
+        patterns:
+          - "*"
 
   # Keep OpenTofu modules up to date
   - package-ecosystem: "terraform"
@@ -32,3 +37,8 @@ updates:
     commit-message:
       prefix: "infrastructure"
       include: "scope"
+    groups:
+      # Group all Terraform module updates together
+      terraform-modules:
+        patterns:
+          - "*"
